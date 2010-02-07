@@ -60,10 +60,36 @@ public class ChangeUnit {
 		this.dbConn = dbConn;
 	}
 	
+	//Sample view definition:
+	//CREATE VIEW cu_students AS SELECT DISTINCT cuentityid, classlists.entityid AS classlists_entityid, students.entityid AS students_entityid, students.studentid AS students_studentid, students.name AS students_name, classlists.studentid AS classlists_studentid, classlists.class AS classlists_class FROM classlists FULL OUTER JOIN students ON (classlists.studentid = students.studentid) INNER JOIN (SELECT entityid, cuentityid FROM changeunitentities) AS cuentities ON (classlists.entityid = cuentities.entityid OR students.entityid = cuentities.entityid);
 	public String viewDefinition(){
-		String viewStr = "SELECT ";
+		String viewStr = "SELECT DISTINCT cuentityid";
 		
+		String firstCol = null;
 		
+		for(String tablename : tables){
+			viewStr += ", "+tablename+".entityid"+" AS "+tablename+"_entityid";
+			
+			if(!joinStrs.containsKey(tablename)) //find column with no join condition, this is the first column in the FROM list
+				firstCol = tablename;
+		}
+		
+		for(Pair<String, String> attribute : attributes)
+			viewStr += ", "+attribute.first+"."+attribute.second+" AS "+attribute.first+"_"+attribute.second;
+		
+		viewStr += " FROM "+firstCol;
+		
+		for(Map.Entry<String, String> joinEntry : joinStrs.entrySet())
+			viewStr += " FULL OUTER JOIN "+joinEntry.getKey()+" ON ("+joinEntry.getValue()+")";
+		
+		viewStr += " INNER JOIN (SELECT entityid, cuentityid FROM changeunitentities) AS cuentities ON (";
+		
+		for(String tablename : tables)
+			viewStr += tablename+".entityid = cuentities.entityid OR ";
+		
+		viewStr = viewStr.substring(0, viewStr.length()-4); //4 length of dangling " OR "
+		
+		viewStr += ")";
 		
 		return(viewStr);
 	}

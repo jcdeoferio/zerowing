@@ -4,10 +4,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-
 import util.DBUtility;
 import util.ParenScanner;
-import util.Utility;
 
 public class Filter {
 	

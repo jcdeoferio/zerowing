@@ -1,9 +1,5 @@
 package util;
 
-import java.io.UnsupportedEncodingException;
-
-import javax.swing.JOptionPane;
-
 /**
  * STORE AS HEX!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * 
@@ -11,9 +7,9 @@ import javax.swing.JOptionPane;
  * 
  */
 public class CharacterManipulator {
-	static int codeSize = 4;
-	static String charSet = "UTF8";
-	static int globalct = 0;
+	private static int codeSize = 8;
+//	private static String charSet = "UTF8";
+//	private static int globalct = 0;
 
 	public static void main(String args[]) {
 		// char c = toChar("11111111111111111111111111111");
@@ -48,47 +44,15 @@ public class CharacterManipulator {
 		String checkString = "00000000000000010000001000000011000001000000010100000110000001110000100000001001000010100000101100001100000011010000111000001111000100000001000100010010000100110001010000010101000101100001011100011000000110010001101000011011000111000001110100011110000111110010000000100001001000100010001100100100001001010010011000100111001010000010100100101010001010110010110000101101001011100010111100110000001100010011001000110011001101000011010100110110001101110011100000111001001110100011101100111100001111010011111000111111010000000100000101000010010000110100010001000101010001100100011101001000010010010100101001001011010011000100110101001110010011110101000001010001010100100101001101010100010101010101011001010111010110000101100101011010010110110101110001011101010111100101111101100000011000010110001001100011011001000110010101100110011001110110100001101001011010100110101101101100011011010110111001101111011100000111000101110010011100110111010001110101011101100111011101111000011110010111101001111011011111000111110101111110011111111000000010000001100000101000001110000100100001011000011010000111100010001000100110001010100010111000110010001101100011101000111110010000100100011001001010010011100101001001010110010110100101111001100010011001100110101001101110011100100111011001111010011111101000001010000110100010101000111010010010100101101001101010011110101000101010011010101010101011101011001010110110101110101011111011000010110001101100101011001110110100101101011011011010110111101110001011100110111010101110111011110010111101101111101011111111000000110000011100001011000011110001001100010111000110110001111100100011001001110010101100101111001100110011011100111011001111110100001101000111010010110100111101010011010101110101101101011111011000110110011101101011011011110111001101110111011110110111111110000011100001111000101110001111100100111001011110011011100111111010001110100111101010111010111110110011101101111011101110111111110000111100011111001011110011111101001111010111110110111101111111100011111001111110101111101111111100111111011111111011111111";
 
 		CharacterManipulator.runTests(girlString + girlString + girlString);
-		CharacterManipulator.runTests(checkString);
-		CharacterManipulator.runTests(shortString);
-		CharacterManipulator.runTests(longString);
-		CharacterManipulator.runTests(girlString);
-
-		// for(int i=0;i<256;i++){
-		// System.out.println("====================================");
-		// String s = Integer.toBinaryString(i);
-		// System.out.println(s);
-		// String out = CharacterManipulator.compressBinary(s);
-		// System.out.println("compBinResult: "+out);
-		// }
-
-		// System.out.println("====================================");
-		// String s = Integer.toBinaryString(127);
-		// System.out.println(s);
-		// String out = CharacterManipulator.compressBinary(s);
-		// System.out.println("compBinResult: "+out);
-
-		// int max = Integer.valueOf("11111111", 2) + 1;
-		//
-		// String supraText = "";
-		// for (int i = 0; i < max; i++) {
-		// String s = Integer.toBinaryString(i);
-		// supraText = supraText + padTo(s, 8);
-		// }
-		// System.out.println(supraText);
-		// String res = compressBinary_beta3(supraText);
-		// System.out.println(res + " "+res.length());
-		// System.out.println(extractTo8(supraText));
-		// String dec = decompressToBinary_beta(res);
-		//
-		// System.out.println(extractTo8(dec));
-		// System.out.println(dec);
-		// System.out.println(supraText.compareTo(dec) +
-		// " "+supraText.equals(dec));
+//		CharacterManipulator.runTests(checkString);
+//		CharacterManipulator.runTests(longString);
+//		CharacterManipulator.runTests(girlString);
+//		CharacterManipulator.runTests(shortString);
 	}
 
 	public static String extractTo8(String src) {
 		String out = "";
-		// src = pad(src,checkPad(src));
+		src = padMe(src);
 		for (int i = 0; i < src.length(); i = i + 8) {
 			out = out + src.substring(i, i + 8) + " ";
 		}
@@ -103,14 +67,13 @@ public class CharacterManipulator {
 		String tTreeInfo = hrt.toData;
 		String tEncodedText = hrt.encode();
 		String binCompressionText = CharacterManipulator
-				.compressBinary_beta3(tEncodedText);
+				.compressBinary(tEncodedText);
 
 		System.out.println("src: (" + s.length() + ") " + s);
 		System.out.println("hman: " + hrt);
 		System.out.println("tTreeInfo: (" + tTreeInfo.length() + ")"
 				+ tTreeInfo);
 
-		// System.out.println("tCode: [" + tEncodedText+"]");
 		System.out.print("tCode: ");
 		for (int i = 0; i < tEncodedText.length(); i++)
 			System.out.print(tEncodedText.charAt(i) + ".");
@@ -128,8 +91,8 @@ public class CharacterManipulator {
 		HuffEnt he2 = hm2.toTree(tTreeInfo);
 
 		// =================== DECOOODE!
-		String newBinary = decompressToBinary_beta(binCompressionText);
-		System.out.println("newBinary: " + newBinary);
+		String newBinary = decompressToBinary(binCompressionText);
+		System.out.println("newBinary: "+ ")" + newBinary);
 		System.out.println("same?" + (newBinary.equals(tEncodedText)));
 
 		// for (int i = 0; i < newBinary.length(); i = i + 8) {
@@ -138,64 +101,18 @@ public class CharacterManipulator {
 		// }
 
 	}
-
-	public static String compressBinary(String s) {
-		int padding = checkPad(s);
-		String src = pad(s, padding);
-		String out = "";
-
-		for (int i = 0; i < src.length(); i = i + 4) {
-			String binary = src.substring(i, i + 4);
-
-			int value = Integer.parseInt(binary, 2);
-			String hex = Integer.toHexString(value);
-			// System.out.println(hex);
-			out = out + hex;
-		}
-		return out;
+	
+	public static void displayln(String s){
+		
 	}
 
-	public static String decompressToBinary(String bin) {
-		return null;
-	}
-
-	// LONG contains double the possible space that INT can contain.
-	// we can modify the code to support 16 bit compression,
-	// potentially cutting the size in half.
-	// (this is possible because chars actually contain more information
-	// than we are currently using.)
-	// TODO: implement 16 bit compression.
-
-	private static char toChar(String length8) {
-		return (char) Integer.parseInt(length8, 2);
-	}
-
-	/**
-	 * This is used to convert characters to binary code - ideally after
-	 * transfer over a network.
-	 * 
-	 * @param c
-	 * @return
-	 */
-	private static String toCode(char c) {
-		String s = Integer.toBinaryString((int) c);
-		while (s.length() < codeSize) {
-			s = '0' + s;
-		}
-		return s;
-	}
-
-	public static String compressBinary_beta3(String bin) {
+	public static String compressBinary(String bin) {
 		codeSize = 8;
-		// int pad = bin.length() % codeSize;
-		// int toPad = checkPad(bin);
 		String out = "";
-		System.out.println("binLen: " + bin.length());
+//		System.out.println("binLen: " + bin.length());
 		int padLen = checkPad(bin);
 		bin = pad(bin, padLen);
-		System.out.println("binLen2: " + bin.length());
-		// System.out.println("src: "+bin);
-		// System.out.println("compBin: ");
+//		System.out.println("binLen2: " + bin.length());
 		for (int i = 0; i < (bin.length()); i = i + codeSize) {
 			String temp = bin.substring(i, i + codeSize);
 			int in = Integer.parseInt(temp, 2);
@@ -245,66 +162,7 @@ public class CharacterManipulator {
 		return padLen + out;
 	}
 
-	public static String compressBinary_beta2(String bin) {
-		codeSize = 8;
-		int pad = bin.length() % codeSize;
-		int toPad = checkPad(bin);
-		String out = "";
-		System.out.println("length: " + bin.length() + " pad needed: " + toPad
-				+ " = " + (bin.length() + toPad));
-		if (toPad != 0) {
-			StringBuilder sb = new StringBuilder();
-			pad = codeSize - pad;
-			for (int i = 0; i < pad; i++) {
-				sb.append("0");
-			}
-			bin = sb.toString() + bin;
-		}
-
-		byte[] bits = new byte[bin.length()];
-		System.out.println("src: " + bin);
-		System.out.println("compBin: ");
-		for (int i = 0; i < (bin.length()); i = i + codeSize) {
-			String temp = bin.substring(i, i + codeSize);
-			System.out.println(temp);
-			Integer in = Integer.parseInt(temp, 2);
-			bits[i] = new Byte(String.valueOf(in));
-			// System.out.print(bits[i]+".");
-			String utf;
-
-			try {
-				utf = new String(new byte[] { bits[i] }, charSet);
-			} catch (UnsupportedEncodingException e) {
-				utf = null;
-				JOptionPane.showMessageDialog(null, "ERROR: "
-						+ e.getLocalizedMessage() + " for " + temp);
-				e.printStackTrace();
-			}
-			System.out.println(temp + " " + bits[i] + " char:[" + utf + "] "
-					+ utf.length());
-
-			// CHECK if NEWLINE!!
-			String tester = temp;
-			if (tester.equals("00001101")) {
-				utf = "#n";
-			} else if (tester.equals("00001010")) {
-				utf = "#o";
-			} else if (utf.equals("#")) {
-				utf = "##";
-			}
-			out = out + utf;
-
-			if (utf.length() < 1) {
-				System.exit(1);
-			}
-		}
-		System.out.println();
-		// String s =
-
-		return out;
-	}
-
-	public static String decompressToBinary_beta(String chars) {
+	public static String decompressToBinary(String chars) {
 		String out = "";
 		int padLen = Integer.parseInt(chars.substring(0, 1));
 		chars = chars.substring(1);
@@ -371,97 +229,5 @@ public class CharacterManipulator {
 
 	public static String padMe(String s) {
 		return pad(s, checkPad(s));
-	}
-
-	/**
-	 * this compresses binary code by exploiting the large size of the Java char
-	 * data type - by grabbing 8 1's and 0's, we can construct a char
-	 * 
-	 * @param bin
-	 * @return
-	 */
-	public static String compressBinary_beta(String bin) {
-
-		int pad = bin.length() % codeSize;
-		String out = "";
-		// System.out.println(bin.length() + " " +pad);
-		if (pad != 0) {
-			StringBuilder sb = new StringBuilder();
-			pad = codeSize - pad;
-			for (int i = 0; i < pad; i++) {
-				sb.append("0");
-			}
-			bin = sb.toString() + bin;
-		}
-		int max = bin.length() / codeSize;
-		System.out.println(bin + " " + max);
-		for (int i = 0; i < max; i++) {
-			String s = bin.substring(i * codeSize, (i * codeSize) + codeSize);
-			char c = toChar(s);
-
-			if (!s.equals("00001101")) {
-				out = out + c;
-				if (c == '#')
-					System.out.println(i + ": " + s + ": " + c + c);
-				else
-					System.out.println(i + ": " + s + ": " + c);
-			} else {
-				out = out + "#n";
-				System.out.println(i + ": " + s + ": #n");
-			}
-
-			if (c == '#') {
-				out = out + c;
-			}
-
-		}
-
-		return out;
-	}
-
-	public static void runTests() {
-		char c = 'a';
-		String code = toCode(c);
-		char c2 = toChar(code);
-		System.out.println(c2);
-
-		char test = toChar("00000000");
-		String testCode = toCode(test);
-		char res = toChar(testCode);
-
-		long ct = 0;
-		System.out.println(Integer.parseInt("11111111", 2));
-		System.out.println("largest int: " + Integer.MAX_VALUE);
-
-		long startTime = System.currentTimeMillis();
-		long max = 2 * (long) Integer.MAX_VALUE;
-		while (test == res && ct < max) {
-			test++;
-			testCode = toCode(test);
-			res = toChar(testCode);
-			// System.out.print(ct++ + " ");
-			// System.out.println(test==res);]
-			int chunk = 10000000;
-
-			if (ct % chunk == 0) {
-				long endTime = System.currentTimeMillis();
-				long dur = endTime - startTime;
-				if (dur == 0)
-					dur = 1;
-				startTime = endTime;
-				long speed = chunk / dur;
-
-				long rem = (max - ct) / speed;
-				rem = rem / 1000;
-				System.out.println(ct + " " + (test == res) + " " + speed + " "
-						+ rem);
-
-			}
-			ct++;
-		}
-
-		System.out.println("ended at " + ct);
-		// 2 147 483 647
-
 	}
 }

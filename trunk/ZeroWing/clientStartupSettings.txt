@@ -1,0 +1,7 @@
+JC
+127.0.0.1
+8888
+zrs
+localhost
+5432
+postgres

@@ -38,30 +38,58 @@ public class Database {
 		initMetadata();
 	}
 	
+	/**
+	 * This method adds a set column, table into a particular change unit.
+	 * Throws an IllegalArgumentException in case that column is already in a change unit.
+	 * 
+	 * @param attribute
+	 * @param tablename
+	 * @param cuname
+	 * @throws IllegalArgumentException
+	 * @throws SQLException 
+	 */
+	public void addToChangeUnit(String attribute, String tablename, String cuname) throws IllegalArgumentException, SQLException{
+		PreparedStatement columnUsedPS = dbConn.getConnection().prepareStatement("SELECT cuname FROM changeunits WHERE tablename = ? AND attribute = ?");
+		columnUsedPS.setString(1, tablename);
+		columnUsedPS.setString(2, attribute);
+		
+		ResultSet columnUsedRS = columnUsedPS.executeQuery();
+		if(columnUsedRS.next())
+			throw new IllegalArgumentException("Column "+attribute+" in table "+tablename+" already used in a change unit '"+columnUsedRS.getString("cuname")+"'");
+		
+		PreparedStatement cuExistsPS = dbConn.getConnection().prepareStatement("SELECT count(*) AS count FROM changeunits WHERE cuname = ?");
+		cuExistsPS.setString(1, cuname);
+		
+		if(dbUtil.getCount(cuExistsPS.executeQuery()) == 0){
+			
+		}
+
+	}
+
 	void assertChangeLogTable() throws SQLException{
 		tableAsserter("changelog", "(cuname varchar(160), cuentityid varchar(160), changedon timestamp)");
 	}
-
+	
 	void assertChangeUnitEntitiesTable() throws SQLException {
 		tableAsserter("changeunitentities", "(entityid varchar(160), tablename varchar(160), attribute varchar(160), cuentityid varchar(160), cuname varchar(160))");
-	}
-	
-	void assertChangeUnitsTable() throws SQLException {
-		tableAsserter("changeunits", "(cuname varchar(160), tablename varchar(160), attribute varchar(160))");
 	}
 	
 	void assertChangeUnitJoinsTable() throws SQLException{
 		tableAsserter("changeunitjoins", "(cuname varchar(160), tablename varchar(160), joinstr varchar(160))");
 	}
 	
+	void assertChangeUnitsTable() throws SQLException {
+		tableAsserter("changeunits", "(cuname varchar(160), tablename varchar(160), attribute varchar(160))");
+	}
+	
 	void assertCUDefVersionsTable() throws SQLException {
 		tableAsserter("cudef_versions", "(cuname varchar(160), peername varchar(160), counter integer)");
 	}
-	
+
 	void assertDataVersionsTable() throws SQLException{
 		tableAsserter("data_versions", "(cuentityid varchar(160), peername varchar(160), counter integer)");
 	}
-
+	
 	void assertSchemaVersionsTable() throws SQLException{
 		tableAsserter("schema_versions", "(tablename varchar(160), peername varchar(160), counter integer)");
 	}
@@ -79,21 +107,6 @@ public class Database {
 		tableAsserter("versionvector", "(peername varchar(160), maxcounter integer)");
 	}
 	
-	void detachTriggers(String tablename) throws SQLException{
-		for(TriggerOperation op : TriggerOperation.values())
-			detachTrigger(op, tablename);
-	}
-	
-	void detachTrigger(TriggerOperation op, String tablename) throws SQLException{
-		final String zwTrigName = getZWTriggerName(op, tablename);
-		final String subprotocol = dbConn.getSubprotocol();
-		
-		if(subprotocol.equals("postgresql"))
-			dbConn.execute("DROP TRIGGER IF EXISTS "+zwTrigName+" ON "+tablename);
-		else if(subprotocol.equals("mysql"))
-			dbConn.execute("DROP TRIGGER IF EXISTS "+zwTrigName);		
-	}
-		
 	void attachInsertTrigger(String tablename) throws SQLException{
 		if(!dbUtil.tableExists(tablename))
 			throw new IllegalArgumentException("Table "+tablename+" does not exist!");
@@ -146,12 +159,15 @@ public class Database {
 		trigBody += "DELETE FROM "+zwTempEntityIDTable+";";
 		trigBody += "DELETE FROM "+zwTempCUEntityIDTable+";";
 		
+		if(subprotocol.equals("postgresql"))
+			trigBody += "RETURN NEW;";
+		
 		detachTrigger(TriggerOperation.INSERT, tablename);
 		
 		System.out.println(generateTriggerCreationSQL(TriggerOperation.INSERT, tablename, trigBody));
 		dbConn.execute(generateTriggerCreationSQL(TriggerOperation.INSERT, tablename, trigBody));		
 	}
-	
+		
 	void attachTriggers(String tablename) throws SQLException{
 		attachInsertTrigger(tablename);
 		attachUpdateTrigger(tablename);
@@ -199,11 +215,71 @@ public class Database {
 		trigBody += " THEN (SELECT cuentityid FROM changeunitentities WHERE entityid = old.entityid AND attribute = '"+prevattr+"' LIMIT 1) ELSE NULL END);";
 		trigBody += "DELETE FROM changelog WHERE cuentityid IS NULL;";
 		
+		final String subprotocol = dbConn.getSubprotocol();
+		if(subprotocol.equals("postgresql"))
+			trigBody += "RETURN NEW;";
+		
 		detachTrigger(TriggerOperation.UPDATE, tablename);
 		
 		dbConn.execute(generateTriggerCreationSQL(TriggerOperation.UPDATE, tablename, trigBody));
 	}
+	
+	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
+	public int compareToLocalCU(String updateString) throws SQLException{
+		String[] cuMsg = updateString.split(" ", 4);
+		String cuentityid = cuMsg[1];
+		VersionVector cuVV = new VersionVector(Utility.decode(cuMsg[2]));
+		
+		VersionVector vv = new VersionVector(dbConn);
+		vv.loadByCUEntityID(cuentityid);
+		
+		return(vv.compareTo(cuVV));
+	}
 
+	private void createChangeUnitsPerTable() throws SQLException {
+		ResultSet tableRS = dbUtil.getTables();
+		
+		while(tableRS.next()){
+			String tablename = tableRS.getString("TABLE_NAME");
+			
+			if(isSystemTable(tablename) || dbUtil.selectCount("FROM changeunits WHERE tablename = '"+tablename+"'") > 0)
+				continue;
+			
+			PreparedStatement cuInsertPS = dbConn.getConnection().prepareStatement("INSERT INTO changeunits (cuname, tablename, attribute) VALUES (?, ?, ?)");
+			ResultSet columnRS = dbUtil.getColumns(tablename);
+			while(columnRS.next()){
+				String attribute = columnRS.getString("COLUMN_NAME");
+				
+				//let autoincrementing columns assign their own IDs 
+				if(columnRS.getString("IS_AUTOINCREMENT").equals("YES"))
+					continue;
+				
+				cuInsertPS.setString(1, "cu_"+tablename);
+				cuInsertPS.setString(2, tablename);
+				cuInsertPS.setString(3, attribute);
+				cuInsertPS.executeUpdate();
+			}
+		}
+	}
+	
+	void detachTrigger(TriggerOperation op, String tablename) throws SQLException{
+		final String zwTrigName = getZWTriggerName(op, tablename);
+		final String zwTrigProcName = getZWTrigProcName(op, tablename);
+		final String subprotocol = dbConn.getSubprotocol();
+		
+		if(subprotocol.equals("postgresql")){
+			dbConn.execute("DROP TRIGGER IF EXISTS "+zwTrigName+" ON "+tablename);
+			dbConn.execute("DROP FUNCTION IF EXISTS "+zwTrigProcName+"()");
+		}
+		else if(subprotocol.equals("mysql"))
+			dbConn.execute("DROP TRIGGER IF EXISTS "+zwTrigName);		
+	}
+	
+	void detachTriggers(String tablename) throws SQLException{
+		for(TriggerOperation op : TriggerOperation.values())
+			detachTrigger(op, tablename);
+	}
+	
 	/**
 	 * Goes through all entries in the change log table and applies
 	 * the necessary versioning. The change log table is then cleared
@@ -228,13 +304,12 @@ public class Database {
 		ResultSet results = dbUtil.getTables();
 		
 		final String tempNullColumnName = "zwtmp_nullentityid";
-		final String tempCUEntityTableName = "zwtmp_cuentitytab";
 		
 		//final PreparedStatement changeUnitPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute, cuentityid FROM (SELECT entityid, tablename, attribute, cuentityid FROM changeunitentities RIGHT JOIN changeunits USING (tablename, attribute) WHERE tablename = ?) AS cuquery WHERE cuentityid IS NULL");
 		final PreparedStatement changeUnitPS = dbConn.getConnection().prepareStatement("SELECT DISTINCT cuname FROM changeunits WHERE tablename = ?");
 		final PreparedStatement cuDefPS = dbConn.getConnection().prepareStatement("SELECT attribute FROM changeunits WHERE tablename = ? and cuname = ?");
 		final PreparedStatement insertPS = dbConn.getConnection().prepareStatement("INSERT INTO changeunitentities (entityid, tablename, attribute, cuentityid, cuname) VALUES (?, ?, ?, ?, ?)");
-		final PreparedStatement insertCUEntityIDPS = dbConn.getConnection().prepareStatement("INSERT INTO "+tempCUEntityTableName+" (cuentityid) VALUES ("+dbConn.getUUIDFun()+")");
+		final PreparedStatement insertCUEntityIDPS = dbConn.getConnection().prepareStatement("INSERT INTO "+zwTempCUEntityIDTable+" (cuentityid) VALUES ("+dbConn.getUUIDFun()+")");
 		while(results.next()){
 			String tableName = results.getString(3);
 			
@@ -268,27 +343,35 @@ public class Database {
 					String entityid = entityidRS.getString(1);
 					
 					//foreach change unit
-					changeUnitPS.setString(1, entityid);
 					Iterator<Object[]> iter = changeUnits.iterator();
 					while(iter.hasNext()){
 						Object[] rowObj = iter.next();
 						String cuname = (String)rowObj[0];
 						
+						String cuentityid = null;
+
+						final PreparedStatement cuentityidPS = dbConn.getConnection().prepareStatement("SELECT cuentityid FROM "+cuname+" WHERE "+tableName+"_entityid = ?");						
+						cuentityidPS.setString(1, entityid);
+						ResultSet cuentityidRS = cuentityidPS.executeQuery();
+						if(cuentityidRS.next()){ //change unit already has change unit entityid
+							cuentityid = cuentityidRS.getString("cuentityid");
+							System.out.println("Has change unit: "+cuentityid);
+						}
+						else{ //need to generate cuentityid
+							dbConn.execute("DELETE FROM "+zwTempCUEntityIDTable);
+							
+							insertCUEntityIDPS.executeUpdate();
+							
+							cuentityidRS = dbConn.executeQuery("SELECT cuentityid FROM "+zwTempCUEntityIDTable+" LIMIT 1");
+							cuentityidRS.next();
+							cuentityid = cuentityidRS.getString("cuentityid");
+							
+							dbConn.execute("DELETE FROM "+zwTempCUEntityIDTable);
+						}
+						
 						cuDefPS.setString(1, tableName);
 						cuDefPS.setString(2, cuname);
 						ResultSet cuDefRS = cuDefPS.executeQuery();
-
-						if(!dbUtil.tableExists(tempCUEntityTableName))
-							dbConn.execute("CREATE TEMPORARY TABLE "+tempCUEntityTableName+" (cuentityid character(36))");
-						
-						insertCUEntityIDPS.executeUpdate();
-						
-						ResultSet cuentityidRS = dbConn.executeQuery("SELECT cuentityid FROM "+tempCUEntityTableName+" LIMIT 1");
-						cuentityidRS.next();
-						String cuentityid = cuentityidRS.getString("cuentityid");
-						
-						dbConn.execute("DROP TABLE "+tempCUEntityTableName);
-						
 						//foreach attribute
 						while(cuDefRS.next()){
 							String attribute = cuDefRS.getString("attribute");
@@ -314,13 +397,11 @@ public class Database {
 	}
 	
 	public String generateTriggerCreationSQL(TriggerOperation op, String tablename, String trigBody){
-		final String opName = op == TriggerOperation.INSERT?"insert":"update";
 		final String opOp = op == TriggerOperation.INSERT?"INSERT":"UPDATE";
-		final String zwTrigProcPre = "zwtrigproc_"+opName+"_";
 		final String subprotocol = dbConn.getSubprotocol();
 		
 		final String zwTrigName = getZWTriggerName(op, tablename);
-		final String zwTrigProcName = zwTrigProcPre+tablename;
+		final String zwTrigProcName = getZWTrigProcName(op, tablename);
 		
 		String sql = "";
 		
@@ -352,6 +433,10 @@ public class Database {
 		return(dbUtil);
 	}
 	
+	public String getPeerName(){
+		return peerName;
+	}
+
 	public List<String> getUpdates(VersionVector vv) throws SQLException {
 		flushChangeLogTable();
 		System.out.println("GETTING UPDATES FOR: " + vv);
@@ -431,6 +516,17 @@ public class Database {
 		return("zwtrig_"+opName+"_"+tablename);
 	}
 
+	private String getZWTrigProcName(TriggerOperation op, String tablename){
+		String opName = null;
+		
+		if(op == TriggerOperation.INSERT)
+			opName = "insert";
+		else if(op == TriggerOperation.UPDATE)
+			opName = "update";
+		
+		return("zwtrigproc_"+opName+"_"+tablename);
+	}
+
 	private void initMetadata() throws SQLException {
 		System.out.println("Creating system tables...");
 		assertChangeLogTable();
@@ -456,44 +552,6 @@ public class Database {
 		System.out.println("Init done!");
 	}
 	
-	private void createChangeUnitsPerTable() throws SQLException {
-		ResultSet tableRS = dbUtil.getTables();
-		
-		while(tableRS.next()){
-			String tablename = tableRS.getString("TABLE_NAME");
-			
-			if(isSystemTable(tablename) || dbUtil.selectCount("FROM changeunits WHERE tablename = '"+tablename+"'") > 0)
-				continue;
-			
-			PreparedStatement cuInsertPS = dbConn.getConnection().prepareStatement("INSERT INTO changeunits (cuname, tablename, attribute) VALUES (?, ?, ?)");
-			ResultSet columnRS = dbUtil.getColumns(tablename);
-			while(columnRS.next()){
-				String attribute = columnRS.getString("COLUMN_NAME");
-				
-				//let autoincrementing columns assign their own IDs 
-				if(columnRS.getString("IS_AUTOINCREMENT").equals("YES"))
-					continue;
-				
-				cuInsertPS.setString(1, "cu_"+tablename);
-				cuInsertPS.setString(2, tablename);
-				cuInsertPS.setString(3, attribute);
-				cuInsertPS.executeUpdate();
-			}
-		}
-	}
-	
-	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
-	public int compareToLocalCU(String updateString) throws SQLException{
-		String[] cuMsg = updateString.split(" ", 4);
-		String cuentityid = cuMsg[1];
-		VersionVector cuVV = new VersionVector(Utility.decode(cuMsg[2]));
-		
-		VersionVector vv = new VersionVector(dbConn);
-		vv.loadByCUEntityID(cuentityid);
-		
-		return(vv.compareTo(cuVV));
-	}
-
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
 	public void insertUpdate(String updateString) throws SQLException {
 		dbConn.getConnection().setAutoCommit(false);
@@ -564,10 +622,6 @@ public class Database {
 	public boolean isSystemTable(String tablename){
 		return(zwSystemTables.contains(tablename));
 	}
-	
-	boolean variableExists(String var) throws SQLException{
-		return(dbUtil.selectCount("FROM variables WHERE varname = '"+var+"'") > 0);
-	}
 
 	void putVariable(String var, String val) throws SQLException{
 		PreparedStatement putVarPS = null;
@@ -606,7 +660,7 @@ public class Database {
 
 		return (stringList);
 	}
-
+	
 	/**
 	 * Creates system table if not already extant.
 	 */
@@ -616,6 +670,10 @@ public class Database {
 		}
 		
 		zwSystemTables.add(tablename);
+	}
+	
+	boolean variableExists(String var) throws SQLException{
+		return(dbUtil.selectCount("FROM variables WHERE varname = '"+var+"'") > 0);
 	}
 	
 	/**
@@ -635,35 +693,6 @@ public class Database {
 		
 		clock.incValue();
 	}
-	
-	/**
-	 * This method adds a set column, table into a particular change unit.
-	 * Throws an IllegalArgumentException in case that column is already in a change unit.
-	 * 
-	 * @param attribute
-	 * @param tablename
-	 * @param cuname
-	 * @throws IllegalArgumentException
-	 * @throws SQLException 
-	 */
-	public void addToChangeUnit(String attribute, String tablename, String cuname) throws IllegalArgumentException, SQLException{
-		PreparedStatement columnUsedPS = dbConn.getConnection().prepareStatement("SELECT cuname FROM changeunits WHERE tablename = ? AND attribute = ?");
-		columnUsedPS.setString(1, tablename);
-		columnUsedPS.setString(2, attribute);
-		
-		ResultSet columnUsedRS = columnUsedPS.executeQuery();
-		if(columnUsedRS.next())
-			throw new IllegalArgumentException("Column "+attribute+" in table "+tablename+" already used in a change unit '"+columnUsedRS.getString("cuname")+"'");
-		
-		PreparedStatement cuExistsPS = dbConn.getConnection().prepareStatement("SELECT count(*) AS count FROM changeunits WHERE cuname = ?");
-		cuExistsPS.setString(1, cuname);
-		
-		if(dbUtil.getCount(cuExistsPS.executeQuery()) == 0){
-			
-		}
-
-	}
-	
 	public String versionString() throws SQLException {
 		flushChangeLogTable();
 		
@@ -678,8 +707,5 @@ public class Database {
 		results.close();
 
 		return (Utility.encode(versionString.trim()));
-	}
-	public String getPeerName(){
-		return peerName;
 	}
 }

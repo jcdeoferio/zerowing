@@ -1,0 +1,6 @@
+8870 postgres password
+2
+A 127.0.0.1 8871 mysql 127.0.0.1 3306 zerowikidba root password  
+addPeer 1 Kevin2 wait 1 sync 1
+Kevin2 127.0.0.1 8871 mysql 127.0.0.1 3306 zerowikidbb root password
+addPeer 10 Kevin 8889 wait 10 sync 10

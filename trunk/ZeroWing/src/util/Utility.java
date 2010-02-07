@@ -1,8 +1,7 @@
 package util;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
+//import java.net.URLDecoder;
+//import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -11,32 +10,46 @@ import java.util.List;
 import mechanic.Database;
 
 public class Utility {
-	static final private String encoding = "UTF-8";
+//	static final private String encoding = "UTF-8";
 
 	public static String decode(String str) {
-		try {
-			if(str.equals(Database.zwNULLEntry))
-				return(null);
-			else
-				return (URLDecoder.decode(str, encoding));
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+		if(str.equals(Database.zwNULLEntry)){
+			return null;
+		} else {
+			return CharacterManipulator.deconstructHuffmanMessage(str);
 		}
-
-		return (str);
+		
+//		try {
+//			if(str.equals(Database.zwNULLEntry))
+//				return(null);
+//			else
+//				return (URLDecoder.decode(str, encoding));
+//		} catch (UnsupportedEncodingException e) {
+//			e.printStackTrace();
+//		}
+//
+//		return (str);
 	}
 	
 	public static String encode(String str) {
-		try {
-			if(str == null)
-				return (URLEncoder.encode(Database.zwNULLEntry, encoding));
-			else
-				return (URLEncoder.encode(str, encoding));
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+		if (str == null) {
+			String ret = CharacterManipulator.constructHuffmanMessage(Database.zwNULLEntry);
+			return ret;
+		} else{
+			String ret = CharacterManipulator.constructHuffmanMessage(str);
+			return ret;
 		}
-
-		return (str);
+//		try {
+//			if(str == null){
+//				return (URLEncoder.encode(Database.zwNULLEntry, encoding));
+//			}
+//			else
+//				return (URLEncoder.encode(str, encoding));
+//		} catch (UnsupportedEncodingException e) {
+//			e.printStackTrace();
+//		}
+//
+//		return (str);
 	}
 	
 	public static int findMatchingParen(String str, int beginParenDex){

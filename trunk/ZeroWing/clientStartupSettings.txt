@@ -1,7 +1,7 @@
-JC
+Kevin
 127.0.0.1
 8888
-zrs
+zerodb
 localhost
-5432
+8870
 postgres

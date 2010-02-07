@@ -86,6 +86,7 @@ public class CharacterManipulator {
 		return out;
 	}
 	public static String constructHuffmanMessage(String s){
+		if(s==null || s.equals(""))return "";
 		Huffman hm = new Huffman();
 		HuffmanResultTuple hrt = hm.getCoding(s);
 		
@@ -99,6 +100,9 @@ public class CharacterManipulator {
 	}
 	public static String deconstructHuffmanMessage(String s){
 		int targ = s.indexOf("#Ac");
+		if(s == null || s.length()==0 || targ == -1){
+			return "";
+		}
 		String tree = s.substring(0,targ);
 		String compBin = s.substring(targ+3);
 		System.out.println(tree);

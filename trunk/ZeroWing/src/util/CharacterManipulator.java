@@ -1,7 +1,17 @@
 package util;
 
 /**
- * STORE AS HEX!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * Usage: <br>
+ * <dt>
+ * 	sender calls <br> 
+ *   {@code String toSend = CharacterManipulator.constructHuffmanMessage(toSendMessage);}
+ *   </dt><br>
+ * <dt>
+ *  receiver calls <br>
+ *   {@code String parsed = CharacterManipulator.deconstructHuffmanMessage(receivedMessage);}
+ *   </dt><br>
+ *   
+ * 
  * 
  * @author kevinzana
  * 
@@ -42,21 +52,64 @@ public class CharacterManipulator {
 				+ "(\"Korean: Oppa Nappa\", literally \"Bad Brother\", although contextually it refers to an "
 				+ "older male friend).";
 		String checkString = "00000000000000010000001000000011000001000000010100000110000001110000100000001001000010100000101100001100000011010000111000001111000100000001000100010010000100110001010000010101000101100001011100011000000110010001101000011011000111000001110100011110000111110010000000100001001000100010001100100100001001010010011000100111001010000010100100101010001010110010110000101101001011100010111100110000001100010011001000110011001101000011010100110110001101110011100000111001001110100011101100111100001111010011111000111111010000000100000101000010010000110100010001000101010001100100011101001000010010010100101001001011010011000100110101001110010011110101000001010001010100100101001101010100010101010101011001010111010110000101100101011010010110110101110001011101010111100101111101100000011000010110001001100011011001000110010101100110011001110110100001101001011010100110101101101100011011010110111001101111011100000111000101110010011100110111010001110101011101100111011101111000011110010111101001111011011111000111110101111110011111111000000010000001100000101000001110000100100001011000011010000111100010001000100110001010100010111000110010001101100011101000111110010000100100011001001010010011100101001001010110010110100101111001100010011001100110101001101110011100100111011001111010011111101000001010000110100010101000111010010010100101101001101010011110101000101010011010101010101011101011001010110110101110101011111011000010110001101100101011001110110100101101011011011010110111101110001011100110111010101110111011110010111101101111101011111111000000110000011100001011000011110001001100010111000110110001111100100011001001110010101100101111001100110011011100111011001111110100001101000111010010110100111101010011010101110101101101011111011000110110011101101011011011110111001101110111011110110111111110000011100001111000101110001111100100111001011110011011100111111010001110100111101010111010111110110011101101111011101110111111110000111100011111001011110011111101001111010111110110111101111111100011111001111110101111101111111100111111011111111011111111";
+		String checkString2 = "000011110000ab";
 
-		CharacterManipulator.runTests(girlString + girlString + girlString);
+//		CharacterManipulator.runTests(girlString + girlString + girlString);
 //		CharacterManipulator.runTests(checkString);
+//		CharacterManipulator.runTests(checkString2);
 //		CharacterManipulator.runTests(longString);
 //		CharacterManipulator.runTests(girlString);
 //		CharacterManipulator.runTests(shortString);
+		
+		System.out.println(testMessages(shortString));
+		System.out.println(testMessages(checkString));
+		System.out.println(testMessages(longString));
+		System.out.println(testMessages(girlString));
+		System.out.println(testMessages(girlString + girlString + girlString));
+	}
+	
+	private static boolean testMessages(String rawMsg){
+		String msg = constructHuffmanMessage(rawMsg);
+		double ratio = ((double)msg.length()) / ((double) rawMsg.length()); 
+		System.out.println(ratio + " " +msg);
+		String received = deconstructHuffmanMessage(msg);
+		
+		return rawMsg.equals(received);
 	}
 
-	public static String extractTo8(String src) {
+	private static String extractTo8(String src) {
 		String out = "";
 		src = padMe(src);
 		for (int i = 0; i < src.length(); i = i + 8) {
 			out = out + src.substring(i, i + 8) + " ";
 		}
 		return out;
+	}
+	public static String constructHuffmanMessage(String s){
+		Huffman hm = new Huffman();
+		HuffmanResultTuple hrt = hm.getCoding(s);
+		
+		String treeInfo = hrt.toData;
+		String binaryCodedText = hrt.encode();
+		String charedBin = compressBinary(binaryCodedText);
+		
+		// System guarantees that the tree cannot contain this string
+		String cut = "#Ac";
+		return treeInfo+cut+charedBin;
+	}
+	public static String deconstructHuffmanMessage(String s){
+		int targ = s.indexOf("#Ac");
+		String tree = s.substring(0,targ);
+		String compBin = s.substring(targ+3);
+		System.out.println(tree);
+		System.out.println(compBin);
+		
+		Huffman hm = new Huffman();
+		HuffEnt he = hm.toTree(tree);
+		
+		String chars = decompressToBinary(compBin);
+		String trueMsg = solveFromHuffman(he, chars);
+		return trueMsg;
 	}
 
 	public static void runTests(String s) {
@@ -69,22 +122,18 @@ public class CharacterManipulator {
 		String binCompressionText = CharacterManipulator
 				.compressBinary(tEncodedText);
 
-		System.out.println("src: (" + s.length() + ") " + s);
+		displayln("src: (" + s.length() + ") " + s);
 		System.out.println("hman: " + hrt);
 		System.out.println("tTreeInfo: (" + tTreeInfo.length() + ")"
 				+ tTreeInfo);
 
-		System.out.print("tCode: ");
-		for (int i = 0; i < tEncodedText.length(); i++)
-			System.out.print(tEncodedText.charAt(i) + ".");
-		System.out.println();
+		displayln("tCode: ("+tEncodedText.length()+") "+tEncodedText);
 
-		System.out.println("tTrueCode: (" + binCompressionText.length() + ") "
-				+ binCompressionText);
+		displayln("tTrueCode: (" + binCompressionText.length() + ") "+binCompressionText);
 
 		int total = tTreeInfo.length() + binCompressionText.length();
 
-		System.out.println("Total: " + total);
+		System.out.println("Total Huffed vs chars: " + total + " | "+s.length());
 		System.out.println("Ratio: " + (double) total / (double) s.length());
 
 		Huffman hm2 = new Huffman();
@@ -92,18 +141,58 @@ public class CharacterManipulator {
 
 		// =================== DECOOODE!
 		String newBinary = decompressToBinary(binCompressionText);
-		System.out.println("newBinary: "+ ")" + newBinary);
-		System.out.println("same?" + (newBinary.equals(tEncodedText)));
+		System.out.print("newBinary: ("+newBinary.length()+")");
+		displayln(newBinary);
+		System.out.println("same compressed and decompressed?: " + (newBinary.equals(tEncodedText)));
 
-		// for (int i = 0; i < newBinary.length(); i = i + 8) {
-		// String sub = newBinary.substring(i, i + 8);
-		// System.out.println(sub + " " + binCompressionText.charAt(i / 8));
-		// }
-
+		String trueMsg = solveFromHuffman(he2, newBinary);
+		displayln("MSG: "+trueMsg);
+		System.out.println("same init text to final?: "+trueMsg.equals(s));
+		System.out.println(s+"\n"+trueMsg);
+	}
+	
+	public static String solveFromHuffman(HuffEnt root, String binary){
+		HuffEnt curNode = root;
+		String out = "";
+		char[] cset = binary.toCharArray();
+		String curString = "";
+		
+		for(int i=0;i<cset.length;i++){
+			if(curNode.left==null){
+//				System.out.println("sfm: "+curString+" ["+curNode.ch+"]");
+				out = out + curNode.ch;
+				curNode = root;
+//				curString = "";
+			} 
+			if(cset[i]=='0'){
+				curNode = curNode.left;
+//				curString = curString + "0";
+			} else if(cset[i]=='1'){
+				curNode = curNode.right;
+//				curString = curString + "1";
+			}
+		}
+		out = out + curNode.ch;
+		
+		
+		
+		return out;
 	}
 	
 	public static void displayln(String s){
-		
+		int cutLen = 4000;
+		int end = s.length();
+		if(end>=cutLen){
+			for(int i=0;i<end;i = i + cutLen){
+				String out = s.substring(i, Math.min(i+cutLen, end));
+				if(i==0)
+					System.out.println(out);
+				else System.out.println("\t "+out);
+			}
+			
+		} else {
+			System.out.println(s);
+		}
 	}
 
 	public static String compressBinary(String bin) {
@@ -155,13 +244,14 @@ public class CharacterManipulator {
 			} else {
 				out = out + c;
 			}
-
 		}
-		// System.out.println();
-
 		return padLen + out;
 	}
 
+	/**
+	 * Decompresses the char set into chars.
+	 * automatically removes padding 
+	 */
 	public static String decompressToBinary(String chars) {
 		String out = "";
 		int padLen = Integer.parseInt(chars.substring(0, 1));

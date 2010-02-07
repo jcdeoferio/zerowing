@@ -63,7 +63,7 @@ public class Huffman {
 		}
 		TreeSet<HuffEnt> ts = toCollection(map);
 		
-		System.out.println("====== "+ts.size());
+//		System.out.println("====== "+ts.size());
 		if(ts.size()<2)return ts;
 		
 		while(ts.size()!=2){

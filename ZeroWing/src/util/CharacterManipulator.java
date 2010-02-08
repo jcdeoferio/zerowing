@@ -99,10 +99,12 @@ public class CharacterManipulator {
 		return treeInfo+cut+charedBin;
 	}
 	public static String deconstructHuffmanMessage(String s){
+		if(s==null) return "";
 		int targ = s.indexOf("#Ac");
-		if(s == null || s.length()==0 || targ == -1){
-			return "";
-		}
+		
+		if( targ == -1)	return ""; 
+		if(s.length()==0) return "";
+		
 		String tree = s.substring(0,targ);
 		String compBin = s.substring(targ+3);
 		System.out.println(tree);

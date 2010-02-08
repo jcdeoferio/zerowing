@@ -1,7 +1,7 @@
 Kevin
-127.0.0.1
+192.168.137.5
 8888
 zerodb
 localhost
-8870
+5432
 postgres

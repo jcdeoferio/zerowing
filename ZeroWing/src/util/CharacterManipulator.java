@@ -61,19 +61,29 @@ public class CharacterManipulator {
 //		CharacterManipulator.runTests(girlString);
 //		CharacterManipulator.runTests(shortString);
 		
-		System.out.println(testMessages(shortString));
-		System.out.println(testMessages(checkString));
-		System.out.println(testMessages(longString));
-		System.out.println(testMessages(girlString));
-		System.out.println(testMessages(girlString + girlString + girlString));
+//		System.out.println(testMessages("   "));
+//		System.out.println(testMessages("  "));
+		System.out.println(testMessages(" "));
+//		System.out.println(testMessages("cu_interwiki"));
+//		System.out.println(testMessages(shortString));
+//		System.out.println(testMessages(checkString));
+//		System.out.println(testMessages(longString));
+//		System.out.println(testMessages(girlString));
+//		System.out.println(testMessages(girlString + girlString + girlString));
 	}
 	
 	private static boolean testMessages(String rawMsg){
 		String msg = constructHuffmanMessage(rawMsg);
 		double ratio = ((double)msg.length()) / ((double) rawMsg.length()); 
-		System.out.println(ratio + " " +msg);
+//		System.out.println(ratio + " " +msg);
 		String received = deconstructHuffmanMessage(msg);
-		
+//		System.out.println("raw:" +rawMsg);
+//		System.out.println("out:" + msg);
+//		String huffuli = constructHuffmanMessage(msg);
+//		System.out.println(huffuli);
+//		String dehuff1 = deconstructHuffmanMessage(huffuli);
+//		System.out.println(dehuff1);
+//		System.out.println(deconstructHuffmanMessage(dehuff1));
 		return rawMsg.equals(received);
 	}
 
@@ -107,8 +117,8 @@ public class CharacterManipulator {
 		
 		String tree = s.substring(0,targ);
 		String compBin = s.substring(targ+3);
-		System.out.println(tree);
-		System.out.println(compBin);
+//		System.out.println(tree);
+//		System.out.println(compBin);
 		
 		Huffman hm = new Huffman();
 		HuffEnt he = hm.toTree(tree);
@@ -158,27 +168,43 @@ public class CharacterManipulator {
 	}
 	
 	public static String solveFromHuffman(HuffEnt root, String binary){
-		HuffEnt curNode = root;
+//		HuffEnt curNode = root;
+		HuffEnt curNode = null;
 		String out = "";
 		char[] cset = binary.toCharArray();
 		String curString = "";
 		
 		for(int i=0;i<cset.length;i++){
-			if(curNode.left==null){
-//				System.out.println("sfm: "+curString+" ["+curNode.ch+"]");
-				out = out + curNode.ch;
+//			System.out.println(curNode);
+			if(curNode==null){
 				curNode = root;
-//				curString = "";
-			} 
+			}
+			if(curNode.left==null){
+				out = out + curNode.ch;
+			}
 			if(cset[i]=='0'){
 				curNode = curNode.left;
-//				curString = curString + "0";
-			} else if(cset[i]=='1'){
+			}else if(cset[i]=='1'){
 				curNode = curNode.right;
-//				curString = curString + "1";
 			}
+			
+			
+//			if(curNode.left==null){
+////				System.out.println("sfm: "+curString+" ["+curNode.ch+"]");
+//				out = out + curNode.ch;
+//				curNode = root;
+////				curString = "";
+//			} 
+//			if(cset[i]=='0'){
+//				curNode = curNode.left;
+////				curString = curString + "0";
+//			} else if(cset[i]=='1'){
+//				curNode = curNode.right;
+////				curString = curString + "1";
+//			}
 		}
-		out = out + curNode.ch;
+		if(curNode!=null)
+			out = out + curNode.ch;
 		
 		
 		

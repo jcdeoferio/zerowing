@@ -62,7 +62,7 @@ public class HuffEnt implements Comparable<HuffEnt>{
 	}
 	
 	public String toString(){
-		return "["+ch+","+value+":"+sumValue+"]";
+		return "["+ch+","+value+":"+sumValue+"|"+left+right+"]";
 	}
 	
 }

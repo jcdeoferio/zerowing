@@ -44,7 +44,7 @@ public class CharacterManipulator {
 				+ "was a hit for the group, and the album sold 121,143 copies to date, "
 				+ "placing 8th in the year-end charts.[1] In early 2008, Girls' Generation "
 				+ "began promoting their second single, \"Kissing You\". The music video featured Donghae "
-				+ "from Super Junior. This song achieved the #1 spot on three major TV music rankings—SBS "
+				+ "from Super Junior. This song achieved the #1 spot on three major TV music rankingsï¿½SBS "
 				+ "Inkigayo, M.net M.Countdown! and KBS Music Bank. In March 2008, the album was re-released "
 				+ "and re-titled Baby Baby. A third single, \"Baby Baby\", was used to promote the album."
 				+ " A digital EP featuring Jessica, Tiffany, and Seohyun was released on April 2008, "
@@ -61,15 +61,20 @@ public class CharacterManipulator {
 //		CharacterManipulator.runTests(girlString);
 //		CharacterManipulator.runTests(shortString);
 		
-//		System.out.println(testMessages("   "));
-//		System.out.println(testMessages("  "));
+		System.out.println(testMessages("   "));
+		System.out.println(testMessages("  "));
 		System.out.println(testMessages(" "));
-//		System.out.println(testMessages("cu_interwiki"));
-//		System.out.println(testMessages(shortString));
-//		System.out.println(testMessages(checkString));
-//		System.out.println(testMessages(longString));
-//		System.out.println(testMessages(girlString));
-//		System.out.println(testMessages(girlString + girlString + girlString));
+		System.out.println(testMessages("cu_interwiki"));
+		System.out.println(testMessages(shortString));
+		System.out.println(testMessages(checkString));
+		System.out.println(testMessages(longString));
+		System.out.println(testMessages(girlString));
+		System.out.println(testMessages(girlString + girlString + girlString));
+//		String test1 = "kevin";
+//		String test2 = "spa ce";
+//		String test3 = "jc";
+//		String[] testing = new String[]{test1, test2, test3};
+//		System.out.println(testMessages(testing));
 	}
 	
 	private static boolean testMessages(String rawMsg){
@@ -79,12 +84,36 @@ public class CharacterManipulator {
 		String received = deconstructHuffmanMessage(msg);
 //		System.out.println("raw:" +rawMsg);
 //		System.out.println("out:" + msg);
+//		System.out.println("decodedRcvd: "+received);
 //		String huffuli = constructHuffmanMessage(msg);
 //		System.out.println(huffuli);
 //		String dehuff1 = deconstructHuffmanMessage(huffuli);
 //		System.out.println(dehuff1);
 //		System.out.println(deconstructHuffmanMessage(dehuff1));
 		return rawMsg.equals(received);
+	}
+	
+	private static boolean testMessages(String[] strings){
+		if(strings == null)return true;
+		if(strings.length==0) return true;
+		if(strings.length==1)return testMessages(strings[0]);
+		else {
+			String append = strings[0];
+			String enc = "";
+			enc = constructHuffmanMessage(strings[0]);
+			for(int i=1;i<strings.length;i++){
+				append = append + " "+ strings[i]; 
+				enc = enc+ " "+constructHuffmanMessage(strings[i]);
+			}
+			System.out.println(append);
+			System.out.println(enc);
+			String res = constructHuffmanMessage(enc);
+			System.out.println(res);
+			String decodeTop = deconstructHuffmanMessage(res);
+			System.out.println("same? : "+enc.equals(decodeTop));
+			
+		}
+		return true;
 	}
 
 	private static String extractTo8(String src) {
@@ -101,6 +130,16 @@ public class CharacterManipulator {
 		HuffmanResultTuple hrt = hm.getCoding(s);
 		
 		String treeInfo = hrt.toData;
+		
+		
+//		System.out.println(treeInfo);
+		int startIndex = treeInfo.indexOf(" ");
+		if(startIndex!=-1){
+			treeInfo = treeInfo.substring(0, startIndex) + 
+				"#B" + treeInfo.substring(startIndex+1);
+	
+		}
+		
 		String binaryCodedText = hrt.encode();
 		String charedBin = compressBinary(binaryCodedText);
 		
@@ -116,6 +155,11 @@ public class CharacterManipulator {
 		if(s.length()==0) return "";
 		
 		String tree = s.substring(0,targ);
+		int startIndex = tree.indexOf("#B");
+		if(startIndex !=-1){
+			tree = tree.substring(0,startIndex)+ " "+ tree.substring(startIndex+2);	
+		}
+		
 		String compBin = s.substring(targ+3);
 //		System.out.println(tree);
 //		System.out.println(compBin);
@@ -176,32 +220,32 @@ public class CharacterManipulator {
 		
 		for(int i=0;i<cset.length;i++){
 //			System.out.println(curNode);
-			if(curNode==null){
-				curNode = root;
-			}
-			if(curNode.left==null){
-				out = out + curNode.ch;
-			}
-			if(cset[i]=='0'){
-				curNode = curNode.left;
-			}else if(cset[i]=='1'){
-				curNode = curNode.right;
-			}
-			
-			
-//			if(curNode.left==null){
-////				System.out.println("sfm: "+curString+" ["+curNode.ch+"]");
-//				out = out + curNode.ch;
+//			if(curNode==null){
 //				curNode = root;
-////				curString = "";
-//			} 
+//			}
+//			if(curNode.left==null){
+//				out = out + curNode.ch;
+//			}
 //			if(cset[i]=='0'){
 //				curNode = curNode.left;
-////				curString = curString + "0";
-//			} else if(cset[i]=='1'){
+//			}else if(cset[i]=='1'){
 //				curNode = curNode.right;
-////				curString = curString + "1";
 //			}
+			
+			if(curNode==null)curNode=root;
+			if(curNode.left==null){
+//				System.out.println("sfm: "+curString+" ["+curNode.ch+"]");
+				out = out + curNode.ch;
+				curNode = root;
+//				curString = "";
+			} 
+			if(cset[i]=='0'){
+				curNode = curNode.left;
+//				curString = curString + "0";
+			} else if(cset[i]=='1'){
+				curNode = curNode.right;
+//				curString = curString + "1";
+			}
 		}
 		if(curNode!=null)
 			out = out + curNode.ch;
@@ -270,9 +314,11 @@ public class CharacterManipulator {
 				} else if (temp.equals("00100011")) {
 					out = out + "#A";
 				}
-
 			} else if (c == '#') {
 				out = out + "##";
+			} else if (c == ' '){
+				System.out.println("SPAZZ: " + temp);
+				out = out + "#B";
 			} else {
 				out = out + c;
 			}
@@ -323,6 +369,8 @@ public class CharacterManipulator {
 					out = out + "00100000";
 				} else if (set.equals("#A")) {
 					out = out + "00100011";
+				} else if (set.equals("#B")) {
+					
 				}
 			}
 

@@ -504,17 +504,13 @@ public class ClientLauncher extends javax.swing.JFrame {
 				.getSelectedItem(), dbIP.getText(), Integer.parseInt(dbPort
 				.getText()), dbName.getText(), dbUser.getText(), new String(
 				dbPassword.getPassword()));
-		while (c == null) {
+		if (c == null) {
 			System.out
 					.println("Possible SQL Error, see console log for details.");
 			JOptionPane.showMessageDialog(this,
 					"Cannot Contact Database. Information might be incorrect",
 					"Cannot Contact Database", JOptionPane.INFORMATION_MESSAGE);
-			c = Client.getClient(nodeName.getText(), trackerIP.getText(),
-					Integer.parseInt(trackerPort.getText()),
-					(String) dbTypeComboBox.getSelectedItem(), dbIP.getText(),
-					Integer.parseInt(dbPort.getText()), dbName.getText(),
-					dbUser.getText(), new String(dbPassword.getPassword()));
+			return;
 		}
 		c.startClient();
 		new ClientMain(c).setVisible(true);

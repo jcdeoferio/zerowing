@@ -122,9 +122,9 @@ public class CharacterManipulator {
 			System.out.println(decodeTop);
 			
 			String[] dec = lineCut(decodeTop);
-			for(int i=0;i<decodeTop.length();i++){
+			for(int i=0;i<dec.length;i++){
 				System.out.println(deconstructHuffmanMessage(dec[i]));
-				
+				System.out.println("!!!");
 			}
 		}
 		return true;

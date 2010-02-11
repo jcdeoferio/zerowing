@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import util.DBUtility;
 import util.Pair;
 
 public class ChangeUnit {
@@ -74,18 +75,25 @@ public class ChangeUnit {
 				firstCol = tablename;
 		}
 		
-		for(Pair<String, String> attribute : attributes)
-			viewStr += ", "+attribute.first+"."+attribute.second+" AS "+attribute.first+"_"+attribute.second;
+		for(Pair<String, String> attribute : attributes){
+			String tablename = attribute.first;
+			String column = attribute.second;
+			
+			if(column.equals("entityid"))
+				continue;
+			
+			viewStr += ", "+tablename+"."+column+" AS "+tablename+"_"+column;
+		}
 		
 		viewStr += " FROM "+firstCol;
 		
 		for(Map.Entry<String, String> joinEntry : joinStrs.entrySet())
 			viewStr += " FULL OUTER JOIN "+joinEntry.getKey()+" ON ("+joinEntry.getValue()+")";
 		
-		viewStr += " INNER JOIN (SELECT entityid, cuentityid FROM changeunitentities) AS cuentities ON (";
+		viewStr += " INNER JOIN changeunitentities ON (";
 		
 		for(String tablename : tables)
-			viewStr += tablename+".entityid = cuentities.entityid OR ";
+			viewStr += tablename+".entityid = changeunitentities.entityid OR ";
 		
 		viewStr = viewStr.substring(0, viewStr.length()-4); //4 length of dangling " OR "
 		
@@ -98,9 +106,39 @@ public class ChangeUnit {
 		this.dbConn = dbConn;
 	}
 	
-	public void saveToDB(){
+	public void saveToDB() throws SQLException{
 		if(dbConn == null)
 			throw new IllegalArgumentException(NO_DBCONN_MSG);
+		
+		DBUtility dbUtil = new DBUtility(dbConn);
+		
+		//Disallows edits
+		if(dbUtil.tableExists(name))
+			return;
+		
+		dbConn.getConnection().setAutoCommit(false);
+		
+		dbConn.execute("CREATE VIEW "+name+" AS "+viewDefinition());
+		
+		final PreparedStatement cuPS = dbConn.getConnection().prepareStatement("INSERT INTO changeunits (cuname, tablename, attribute) VALUES (?, ?, ?)");
+		cuPS.setString(1, name);
+		
+		for(Pair<String, String> attrEntry : attributes){
+			cuPS.setString(2, attrEntry.first);
+			cuPS.setString(3, attrEntry.second);
+			cuPS.executeUpdate();
+		}
+		
+		final PreparedStatement joinPS = dbConn.getConnection().prepareStatement("INSERT INTO changeunitjoins (cuname, tablename, joinstr) VALUES (?, ?, ?)");
+		joinPS.setString(1, name);
+		
+		for(Map.Entry<String, String> joinEntry : joinStrs.entrySet()){
+			joinPS.setString(2, joinEntry.getKey());
+			joinPS.setString(3, joinEntry.getValue());
+			joinPS.executeUpdate();
+		}
+		
+		dbConn.getConnection().setAutoCommit(true);
 	}
 	
 	public void loadFromDB() throws SQLException{

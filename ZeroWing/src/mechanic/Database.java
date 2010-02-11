@@ -1,5 +1,8 @@
 package mechanic;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -7,6 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import util.DBUtility;
+import util.Pair;
 import util.ParenScanner;
 import util.Utility;
 
@@ -23,6 +27,7 @@ public class Database {
 	DBUtility dbUtil;
 	Clock clock;
 	String peerName;
+	Filter filter;
 	
 	private static Set<String> zwSystemTables = new HashSet<String>();
 	
@@ -33,6 +38,8 @@ public class Database {
 		
 		this.peerName = peerName;
 		clock = new Clock(this);
+		
+		filter = new Filter(dbConn);
 		
 		//Unhandled SQL Exception, causes program termination.
 		initMetadata();
@@ -164,7 +171,6 @@ public class Database {
 		
 		detachTrigger(TriggerOperation.INSERT, tablename);
 		
-		System.out.println(generateTriggerCreationSQL(TriggerOperation.INSERT, tablename, trigBody));
 		dbConn.execute(generateTriggerCreationSQL(TriggerOperation.INSERT, tablename, trigBody));		
 	}
 		
@@ -245,20 +251,22 @@ public class Database {
 			if(isSystemTable(tablename) || dbUtil.selectCount("FROM changeunits WHERE tablename = '"+tablename+"'") > 0)
 				continue;
 			
-			PreparedStatement cuInsertPS = dbConn.getConnection().prepareStatement("INSERT INTO changeunits (cuname, tablename, attribute) VALUES (?, ?, ?)");
+			List<Pair<String, String>> attrEntries = new LinkedList<Pair<String, String>>();
 			ResultSet columnRS = dbUtil.getColumns(tablename);
 			while(columnRS.next()){
 				String attribute = columnRS.getString("COLUMN_NAME");
+				
+				if(attribute.equals("entityid"))
+					continue;
 				
 				//let autoincrementing columns assign their own IDs 
 				if(columnRS.getString("IS_AUTOINCREMENT").equals("YES"))
 					continue;
 				
-				cuInsertPS.setString(1, "cu_"+tablename);
-				cuInsertPS.setString(2, tablename);
-				cuInsertPS.setString(3, attribute);
-				cuInsertPS.executeUpdate();
+				attrEntries.add(new Pair<String, String>(tablename, attribute));
 			}
+			
+			new ChangeUnit("cu_"+tablename, attrEntries, dbConn).saveToDB();
 		}
 	}
 	
@@ -316,10 +324,6 @@ public class Database {
 			if(isSystemTable(tableName))
 				continue;
 			
-			if(!dbUtil.tableHasColumn(tableName, "entityid")){
-				dbConn.executeUpdate("ALTER TABLE "+tableName+" ADD COLUMN entityid character(36)");
-			}
-			
 			//count entities with null entityids
 			int nNullEntityIDs = dbUtil.selectCount("FROM "+tableName+" WHERE entityid IS NULL");
 			
@@ -352,12 +356,13 @@ public class Database {
 
 						final PreparedStatement cuentityidPS = dbConn.getConnection().prepareStatement("SELECT cuentityid FROM "+cuname+" WHERE "+tableName+"_entityid = ?");						
 						cuentityidPS.setString(1, entityid);
-						ResultSet cuentityidRS = cuentityidPS.executeQuery();
-						if(cuentityidRS.next()){ //change unit already has change unit entityid
-							cuentityid = cuentityidRS.getString("cuentityid");
-							System.out.println("Has change unit: "+cuentityid);
-						}
-						else{ //need to generate cuentityid
+						ResultSet cuentityidRS = null;
+						//ResultSet cuentityidRS = cuentityidPS.executeQuery();
+//						if(cuentityidRS.next()){ //change unit already has change unit entityid
+//							cuentityid = cuentityidRS.getString("cuentityid");
+//							System.out.println("Has change unit: "+cuentityid);
+//						}
+//						else{ //need to generate cuentityid
 							dbConn.execute("DELETE FROM "+zwTempCUEntityIDTable);
 							
 							insertCUEntityIDPS.executeUpdate();
@@ -367,7 +372,7 @@ public class Database {
 							cuentityid = cuentityidRS.getString("cuentityid");
 							
 							dbConn.execute("DELETE FROM "+zwTempCUEntityIDTable);
-						}
+//						}
 						
 						cuDefPS.setString(1, tableName);
 						cuDefPS.setString(2, cuname);
@@ -437,15 +442,30 @@ public class Database {
 		return peerName;
 	}
 
-	public List<String> getUpdates(VersionVector vv) throws SQLException {
+	public List<String> getUpdates(Filter filter, VersionVector vv) throws SQLException {
 		flushChangeLogTable();
 		System.out.println("GETTING UPDATES FOR: " + vv);
+		System.out.println("WITH FILTOR:"+filter);
 		List<String> updates = new LinkedList<String>();
 		
-		//for each cuentityid with version newer than the one in vv
-		PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute, cuname FROM changeunitentities WHERE cuentityid = ? ORDER BY tablename");
-		
 		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuentityid FROM data_versions WHERE "+vv.toWhereClause());
+		
+		//TODO:REMOVE
+		PrintStream ps = null;
+		try {
+			ps = new PrintStream(new File("before_encoding_for_send.txt"));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		//TODO:REMOVE
+		PrintStream ups = null;
+		try {
+			ups = new PrintStream(new File("no_russian.txt"));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
 		while(cuentityidRS.next()){
 			String cuentityid = cuentityidRS.getString("cuentityid");
 			
@@ -454,8 +474,11 @@ public class Database {
 			String tabledata = "";
 			String cuname = null;
 			ResultSet valueRS = null;
-			
+		
+			//for each cuentityid with version newer than the one in vv
+			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute, cuname FROM changeunitentities WHERE cuentityid = ? AND "+filter.getForCU(cuname)+" ORDER BY tablename"); //TODO:TIEM 4 FILTORS
 			dataPS.setString(1, cuentityid);
+			System.out.println("STATEMENT:"+dataPS);
 			ResultSet dataRS = dataPS.executeQuery();
 			while(dataRS.next()){
 				String entityid = dataRS.getString("entityid");
@@ -471,10 +494,16 @@ public class Database {
 					
 					if(!valueRS.next())
 						continue;
-					
+			
+					ups.println("TABLENAME:"+tablename);
+					ups.println("ENTITYID:"+entityid);
 					tabledata += "("+Utility.encode(tablename)+" "+entityid;
 				}
-
+				
+				ups.println("ATTRIBUTE:"+attribute);
+				ups.println("VALUE:"+valueRS.getString(attribute));
+				ups.println("TYPE:"+dbUtil.getColumnType(tablename, attribute));
+				ups.println();
 				//get data per attribute	
 				tabledata += " "+Utility.encode(attribute)+":"+Utility.encode(valueRS.getString(attribute))+":"+dbUtil.getColumnType(tablename, attribute);
 				
@@ -488,21 +517,18 @@ public class Database {
 			
 			VersionVector cuVV = new VersionVector(dbConn);
 			cuVV.loadByCUEntityID(cuentityid);
-			
+
+			ups.println("CUNAME:"+cuname);
+			ups.println("CUENTITYID:"+cuentityid);
+			ups.println("CUVV:"+cuVV.toString());
+			ups.println("------------------");
 			String cudata = "("+Utility.encode(cuname)+" "+cuentityid+" "+Utility.encode(cuVV.toString())+" "+tabledata+")";
 			updates.add(cudata);
+			
+			ps.println(cudata);
 		}
 		
 		return(updates);
-	}
-	
-	String getVariable(String var) throws SQLException{
-		ResultSet result = dbConn.executeQuery("SELECT value FROM variables WHERE varname = '"+var+"'");
-		
-		if(!result.next())
-			return(null);
-		
-		return(result.getString("value"));
 	}
 	
 	private String getZWTriggerName(TriggerOperation op, String tablename){
@@ -539,9 +565,19 @@ public class Database {
 		assertVersionVectorTable();
 		assertTempTables();
 		
+		assertEntityIDColumns();
+		
 		//TODO:way for users to specify their own change units
 		System.out.println("Creating change units per table...");
 		createChangeUnitsPerTable();
+		
+		//TODO:way for users to specify their own filter
+		if(!dbUtil.variableExists(Filter.FILTER_VAR_NAME)){
+			filter.setForCU("cu_objectcache", "objectcache:objectcache_keyname = 'zerowikidba:messages:en'");
+			filter.saveToDB();
+		}
+		
+		System.out.println("FILTER!:"+filter);
 		
 		System.out.println("Flushing ChangeLog...");
 		flushChangeLogTable();
@@ -552,10 +588,23 @@ public class Database {
 		System.out.println("Init done!");
 	}
 	
+	private void assertEntityIDColumns() throws SQLException {
+		ResultSet tableRS = dbUtil.getTables();
+		
+		while(tableRS.next()){
+			String tablename = tableRS.getString("TABLE_NAME");
+			
+			if(isSystemTable(tablename))
+				continue;
+			
+			if(!dbUtil.tableHasColumn(tablename, "entityid"))
+				dbConn.executeUpdate("ALTER TABLE "+tablename+" ADD COLUMN entityid character(36)");
+		}
+	}
+
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
 	public void insertUpdate(String updateString) throws SQLException {
 		dbConn.getConnection().setAutoCommit(false);
-		
 		String[] cuMsg = updateString.split(" ", 4);
 		String cuname = Utility.decode(cuMsg[0]);
 		String cuentityid = cuMsg[1];
@@ -623,19 +672,6 @@ public class Database {
 		return(zwSystemTables.contains(tablename));
 	}
 
-	void putVariable(String var, String val) throws SQLException{
-		PreparedStatement putVarPS = null;
-		
-		if(!variableExists(var))
-			putVarPS = dbConn.getConnection().prepareStatement("INSERT INTO variables (value, varname) VALUES (?, ?)");
-		else
-			putVarPS = dbConn.getConnection().prepareStatement("UPDATE variables SET value = ? WHERE varname = ?");
-		
-		putVarPS.setString(1, val);
-		putVarPS.setString(2, var);
-		putVarPS.executeUpdate();
-	}
-
 	public List<String> queryToStringList(String query) throws SQLException {
 		return (resultSetToStringList(dbConn.executeQuery(query)));
 	}
@@ -672,17 +708,11 @@ public class Database {
 		zwSystemTables.add(tablename);
 	}
 	
-	boolean variableExists(String var) throws SQLException{
-		return(dbUtil.selectCount("FROM variables WHERE varname = '"+var+"'") > 0);
-	}
-	
 	/**
 	 * Given a change unit entityid, updates the change unit's version
 	 * to this site's current clock value and then increments the clock
 	 */
 	private void versionChangeUnit(String cuentityid) throws SQLException {
-		System.out.println("versionChangeUnit:" + cuentityid);
-		
 		int clockVal = clock.getValue();
 		
 		VersionVector vv = new VersionVector(dbConn);
@@ -706,6 +736,10 @@ public class Database {
 
 		results.close();
 
-		return (Utility.encode(versionString.trim()));
+		return (versionString.trim());
+	}
+	
+	public String filterString() throws SQLException{
+		return(filter.toString());
 	}
 }

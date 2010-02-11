@@ -24,7 +24,8 @@ import client.Client;
  * @author jc.deoferio
  */
 public class ClientLauncher extends javax.swing.JFrame {
-
+	private static final long serialVersionUID = -7368758110714928467L;
+	
 	private void fillFields() {
 		fieldArray = new JTextField[] { nodeName, trackerIP, trackerPort,
 				dbName, dbIP, dbPort, dbUser };

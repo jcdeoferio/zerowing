@@ -1,12 +1,16 @@
 package client;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
 import mechanic.Database;
+import mechanic.Filter;
 import mechanic.VersionVector;
 
 import signal.IdentifiableSimpleConnection;
@@ -14,6 +18,7 @@ import signal.SimpleConnection;
 import signal.TrackerListener;
 import util.ConsoleController;
 import util.ConsoleSystem;
+import util.ParenScanner;
 import util.Utility;
 
 public class Client implements ConsoleSystem{
@@ -192,12 +197,26 @@ public class Client implements ConsoleSystem{
 			else if(command.equals("updateRequest")){
 				List<String> updates = null;
 				try {
-					updates = db.getUpdates(new VersionVector(Utility.decode(params)));
+					ParenScanner psc = new ParenScanner(params);
+					String filterStr = psc.next();
+					System.out.println(filterStr);
+					Filter filter = new Filter(Utility.decode(filterStr));
+					VersionVector vv = new VersionVector(Utility.decode(psc.next()));
+					System.out.println(filter.toString());
+					updates = db.getUpdates(filter, vv);
 					displayln("[executeCommand:updateRequest]: updates built.");
 					
 					sendMessage("testUpdate", peerName+" Sending test update",sc);
 					if(updates!=null){
+						//TODO:REMOVE
+						PrintStream ps = null;
+						try {
+							ps = new PrintStream(new File("as_encoded_for_send.txt"));
+						} catch (FileNotFoundException e) {
+							e.printStackTrace();
+						}
 						for(String updateEntry:updates){
+							ps.println(Utility.encode(updateEntry));
 							sendMessage("updateEntry",Utility.encode(updateEntry),sc);
 						}
 					} else {
@@ -212,8 +231,23 @@ public class Client implements ConsoleSystem{
 			} else if(command.equals("testUpdate")){
 				displayln("[executeCommand.testUpdate] <"+params+"> S:"+sc);
 			} else if(command.equals("updateEntry")){
+				//TODO:REMOVE
+				PrintStream ps = null;
+				try {
+					ps = new PrintStream(new File("as_received.txt"));
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+				ps.println(params);
 				String updateString = Utility.decode(params);
-				
+				//TODO:REMOVE
+				try {
+					ps = new PrintStream(new File("as_first_decoded.txt"));
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				}
+				ps.println(updateString);
+				System.out.println(">> ADD "+params +"\n>> "+updateString );
 				updateStringBuffer.add(updateString);
 			}
 			else if(command.equals("endUpdate")){
@@ -247,11 +281,11 @@ public class Client implements ConsoleSystem{
 	}
 	public String constructUpdateRequest() {
 		try {
-			return db.versionString();
+			return ("("+Utility.encode(db.filterString())+")("+Utility.encode(db.versionString())+")");
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		return ("");
+		return("");
 	}
 	
 	public SimpleConnection connect(String ip, int port) throws IOException {

@@ -28,6 +28,42 @@ public class DBUtility {
 		return(str.substring(0, str.length()-2)); //2 length of dangling ", "
 	}
 	
+	public String getVariable(String var) throws SQLException{
+		final PreparedStatement ps = dbConn.getConnection().prepareStatement("SELECT value FROM variables WHERE varname = ?");
+		ps.setString(1, var);
+		ResultSet result = ps.executeQuery();
+		
+		if(!result.next())
+			return(null);
+		
+		return(result.getString("value"));
+	}
+	
+	public void putVariable(String var, String val) throws SQLException{
+		PreparedStatement putVarPS = null;
+		
+		if(!variableExists(var))
+			putVarPS = dbConn.getConnection().prepareStatement("INSERT INTO variables (value, varname) VALUES (?, ?)");
+		else
+			putVarPS = dbConn.getConnection().prepareStatement("UPDATE variables SET value = ? WHERE varname = ?");
+		
+		putVarPS.setString(1, val);
+		putVarPS.setString(2, var);
+		putVarPS.executeUpdate();
+	}
+	
+	public boolean variableExists(String var) throws SQLException{
+		return(selectCount("FROM variables WHERE varname = '"+var+"'") > 0);
+	}
+
+	
+	public String getStringValue(ResultSet rs) throws SQLException{
+		if(rs.next())
+			return(rs.getString(1));
+		else
+			return(null);
+	}
+	
 	public String craftInsertStatement(String tablename, List<String> columns,
 			List<String> values, List<Boolean> quote){
 		

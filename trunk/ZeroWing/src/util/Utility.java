@@ -1,7 +1,8 @@
 package util;
 
-//import java.net.URLDecoder;
-//import java.net.URLEncoder;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -10,28 +11,53 @@ import java.util.List;
 import mechanic.Database;
 
 public class Utility {
-//	static final private String encoding = "UTF-8";
+	static final private String encoding = "UTF-8";
+	static final boolean huff = false;
 
 	public static String decode(String str) {
+		String decodedStr = null;
+		
+		if(huff)
+			decodedStr = huffDecode(str);
+		else
+			decodedStr = urlDecode(str);
+		
+		return(decodedStr);
+	}
+	
+	private static String huffDecode(String str){
 		if(str.equals(Database.zwNULLEntry)){
 			return null;
 		} else {
 			return CharacterManipulator.deconstructHuffmanMessage(str);
+		}		
+	}
+	
+	private static String urlDecode(String str){
+		try {
+			if(str.equals(Database.zwNULLEntry))
+				return(null);
+			else
+				return (URLDecoder.decode(str, encoding));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
 		}
-		
-//		try {
-//			if(str.equals(Database.zwNULLEntry))
-//				return(null);
-//			else
-//				return (URLDecoder.decode(str, encoding));
-//		} catch (UnsupportedEncodingException e) {
-//			e.printStackTrace();
-//		}
-//
-//		return (str);
+
+		return (str);
 	}
 	
 	public static String encode(String str) {
+		String encodedStr = null;
+		
+		if(huff)
+			encodedStr = huffEncode(str);
+		else
+			encodedStr = urlEncode(str);
+		
+		return(encodedStr);
+	}
+	
+	private static String huffEncode(String str){
 		if (str == null) {
 			String ret = CharacterManipulator.constructHuffmanMessage(Database.zwNULLEntry);
 			return ret;
@@ -39,17 +65,20 @@ public class Utility {
 			String ret = CharacterManipulator.constructHuffmanMessage(str);
 			return ret;
 		}
-//		try {
-//			if(str == null){
-//				return (URLEncoder.encode(Database.zwNULLEntry, encoding));
-//			}
-//			else
-//				return (URLEncoder.encode(str, encoding));
-//		} catch (UnsupportedEncodingException e) {
-//			e.printStackTrace();
-//		}
-//
-//		return (str);
+	}
+	
+	private static String urlEncode(String str){
+		try {
+			if(str == null){
+				return (URLEncoder.encode(Database.zwNULLEntry, encoding));
+			}
+			else
+				return (URLEncoder.encode(str, encoding));
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+
+		return (str);	
 	}
 	
 	public static int findMatchingParen(String str, int beginParenDex){

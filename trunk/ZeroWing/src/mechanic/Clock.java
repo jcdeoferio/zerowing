@@ -2,12 +2,17 @@ package mechanic;
 
 import java.sql.*;
 
+import util.DBUtility;
+
 public class Clock {
-	Connection db_conn;
 	Database db;
+	DBConnection dbConn;
+	DBUtility dbUtil;
 	
 	Clock(Database db) throws SQLException{
 		this.db = db;
+		this.dbConn = db.getDBConnection();
+		this.dbUtil = new DBUtility(dbConn);
 		
 		initDBClock();
 	}
@@ -15,16 +20,16 @@ public class Clock {
 	private void initDBClock() throws SQLException{
 		db.assertVariablesTable();
 		
-		if(db.getVariable("clock") == null)
-			db.putVariable("clock", "0");
+		if(dbUtil.getVariable("clock") == null)
+			dbUtil.putVariable("clock", "0");
 	}
 	
 	public int getValue() throws SQLException{
-		return(Integer.valueOf(db.getVariable("clock")));
+		return(Integer.valueOf(dbUtil.getVariable("clock")));
 	}
 	
 	public void setValue(int clockValue) throws SQLException{
-		db.putVariable("clock", Integer.toString(clockValue));
+		dbUtil.putVariable("clock", Integer.toString(clockValue));
 	}
 	
 	public void incValue() throws SQLException{

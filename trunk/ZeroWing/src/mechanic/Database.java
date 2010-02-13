@@ -448,35 +448,19 @@ public class Database {
 		System.out.println("WITH FILTOR:"+filter);
 		List<String> updates = new LinkedList<String>();
 		
-		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuentityid FROM data_versions WHERE "+vv.toWhereClause());
-		
-		//TODO:REMOVE
-		PrintStream ps = null;
-		try {
-			ps = new PrintStream(new File("before_encoding_for_send.txt"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		
-		//TODO:REMOVE
-		PrintStream ups = null;
-		try {
-			ups = new PrintStream(new File("no_russian.txt"));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		
+		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM data_versions INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY cuname");
+			
+		//for each cuentityid with version newer than the one in vv
 		while(cuentityidRS.next()){
 			String cuentityid = cuentityidRS.getString("cuentityid");
+			String cuname = cuentityidRS.getString("cuname");
 			
 			//for each table in cuentityid's change unit
 			String prevtablename = "";
 			String tabledata = "";
-			String cuname = null;
 			ResultSet valueRS = null;
-		
-			//for each cuentityid with version newer than the one in vv
-			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute, cuname FROM changeunitentities WHERE cuentityid = ? AND "+filter.getForCU(cuname)+" ORDER BY tablename"); //TODO:TIEM 4 FILTORS
+			
+			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute FROM changeunitentities cue WHERE cuentityid = ? AND EXISTS(SELECT cuentityid FROM "+cuname+" WHERE cuentityid = cue.cuentityid AND "+filter.getForCU(cuname)+") ORDER BY tablename");
 			dataPS.setString(1, cuentityid);
 			System.out.println("STATEMENT:"+dataPS);
 			ResultSet dataRS = dataPS.executeQuery();
@@ -484,7 +468,6 @@ public class Database {
 				String entityid = dataRS.getString("entityid");
 				String tablename = dataRS.getString("tablename");
 				String attribute = dataRS.getString("attribute");
-				cuname = dataRS.getString("cuname");
 				
 				if(!tablename.equals(prevtablename)){
 					if(!prevtablename.equals(""))
@@ -495,15 +478,9 @@ public class Database {
 					if(!valueRS.next())
 						continue;
 			
-					ups.println("TABLENAME:"+tablename);
-					ups.println("ENTITYID:"+entityid);
 					tabledata += "("+Utility.encode(tablename)+" "+entityid;
 				}
 				
-				ups.println("ATTRIBUTE:"+attribute);
-				ups.println("VALUE:"+valueRS.getString(attribute));
-				ups.println("TYPE:"+dbUtil.getColumnType(tablename, attribute));
-				ups.println();
 				//get data per attribute	
 				tabledata += " "+Utility.encode(attribute)+":"+Utility.encode(valueRS.getString(attribute))+":"+dbUtil.getColumnType(tablename, attribute);
 				
@@ -518,14 +495,8 @@ public class Database {
 			VersionVector cuVV = new VersionVector(dbConn);
 			cuVV.loadByCUEntityID(cuentityid);
 
-			ups.println("CUNAME:"+cuname);
-			ups.println("CUENTITYID:"+cuentityid);
-			ups.println("CUVV:"+cuVV.toString());
-			ups.println("------------------");
 			String cudata = "("+Utility.encode(cuname)+" "+cuentityid+" "+Utility.encode(cuVV.toString())+" "+tabledata+")";
 			updates.add(cudata);
-			
-			ps.println(cudata);
 		}
 		
 		return(updates);
@@ -573,7 +544,7 @@ public class Database {
 		
 		//TODO:way for users to specify their own filter
 		if(!dbUtil.variableExists(Filter.FILTER_VAR_NAME)){
-			filter.setForCU("cu_objectcache", "objectcache:objectcache_keyname = 'zerowikidba:messages:en'");
+			filter.setForCU("cu_objectcache", "objectcache_keyname = 'zerowikidba:messages:en'");
 			filter.saveToDB();
 		}
 		

@@ -197,6 +197,7 @@ public class Client implements ConsoleSystem{
 			else if(command.equals("updateRequest")){
 				List<String> updates = null;
 				try {
+					sendMessage("syncPartner", Utility.encode(peerName), sc);
 					ParenScanner psc = new ParenScanner(params);
 					String filterStr = psc.next();
 					System.out.println(filterStr);
@@ -228,6 +229,9 @@ public class Client implements ConsoleSystem{
 				} catch (IOException e) {
 					displayln("[executeCommand:updateRequest]: IOException "+e.getLocalizedMessage());
 				}
+			} else if(command.equals("syncPartner")){
+				String syncPartner= Utility.decode(params);
+				db.setSyncPartner(syncPartner);
 			} else if(command.equals("testUpdate")){
 				displayln("[executeCommand.testUpdate] <"+params+"> S:"+sc);
 			} else if(command.equals("updateEntry")){
@@ -266,6 +270,8 @@ public class Client implements ConsoleSystem{
 				}
 				System.out.println("Inserting updates");
 				updateStringBuffer.clear();
+				
+				db.unsetSyncPartner();
 			}
 		}
 	}

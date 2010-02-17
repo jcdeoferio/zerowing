@@ -1,14 +1,19 @@
 package mechanic;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 import java.sql.*;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
+
 import util.DBUtility;
 import util.Pair;
 import util.ParenScanner;
@@ -23,11 +28,12 @@ public class Database {
 	static final String zwTempCUEntityIDTable = "zwtrigproc_cuentityid";
 	public static final String zwNULLEntry = "ZWSUPERNULL";
 	
-	DBConnection dbConn;
-	DBUtility dbUtil;
-	Clock clock;
-	String peerName;
-	Filter filter;
+	private DBConnection dbConn;
+	private DBUtility dbUtil;
+	private Clock clock;
+	private String peerName;
+	private Filter filter;
+	private String syncPartner;
 	
 	private static Set<String> zwSystemTables = new HashSet<String>();
 	
@@ -40,6 +46,8 @@ public class Database {
 		clock = new Clock(this);
 		
 		filter = new Filter(dbConn);
+		
+		syncPartner = null;
 		
 		//Unhandled SQL Exception, causes program termination.
 		initMetadata();
@@ -95,6 +103,24 @@ public class Database {
 
 	void assertDataVersionsTable() throws SQLException{
 		tableAsserter("data_versions", "(cuentityid varchar(160), peername varchar(160), counter integer)");
+	}
+	
+	private void assertEntityIDColumns() throws SQLException {
+		ResultSet tableRS = dbUtil.getTables();
+		
+		while(tableRS.next()){
+			String tablename = tableRS.getString("TABLE_NAME");
+			
+			if(isSystemTable(tablename))
+				continue;
+			
+			if(!dbUtil.tableHasColumn(tablename, "entityid"))
+				dbConn.executeUpdate("ALTER TABLE "+tablename+" ADD COLUMN entityid character(36)");
+		}
+	}
+	
+	void assertMappingsTable() throws SQLException{
+		tableAsserter("mappings", "(id character(36), mappedid character(36), mappedpeer character(160))");
 	}
 	
 	void assertSchemaVersionsTable() throws SQLException{
@@ -173,12 +199,12 @@ public class Database {
 		
 		dbConn.execute(generateTriggerCreationSQL(TriggerOperation.INSERT, tablename, trigBody));		
 	}
-		
+	
 	void attachTriggers(String tablename) throws SQLException{
 		attachInsertTrigger(tablename);
 		attachUpdateTrigger(tablename);
 	}
-	
+		
 	void attachUpdateTrigger(String tablename) throws SQLException{
 		if(!dbUtil.tableExists(tablename))
 			throw new IllegalArgumentException("Table "+tablename+" does not exist!");
@@ -241,7 +267,7 @@ public class Database {
 		
 		return(vv.compareTo(cuVV));
 	}
-
+	
 	private void createChangeUnitsPerTable() throws SQLException {
 		ResultSet tableRS = dbUtil.getTables();
 		
@@ -269,7 +295,7 @@ public class Database {
 			new ChangeUnit("cu_"+tablename, attrEntries, dbConn).saveToDB();
 		}
 	}
-	
+
 	void detachTrigger(TriggerOperation op, String tablename) throws SQLException{
 		final String zwTrigName = getZWTriggerName(op, tablename);
 		final String zwTrigProcName = getZWTrigProcName(op, tablename);
@@ -286,6 +312,10 @@ public class Database {
 	void detachTriggers(String tablename) throws SQLException{
 		for(TriggerOperation op : TriggerOperation.values())
 			detachTrigger(op, tablename);
+	}
+	
+	public String filterString() throws SQLException{
+		return(filter.toString());
 	}
 	
 	/**
@@ -438,17 +468,44 @@ public class Database {
 		return(dbUtil);
 	}
 	
+	String getMapping(String id, String peername) throws SQLException{
+		final PreparedStatement mappedPS = dbConn.getConnection().prepareStatement("SELECT mappedid FROM mappings WHERE id = ? AND mappedpeer = ?");
+		mappedPS.setString(1, id);
+		mappedPS.setString(2, peername);
+		
+		ResultSet mappedRS = mappedPS.executeQuery();
+		if(mappedRS.next())
+			return(mappedRS.getString("mappedid"));
+		else
+			return(id);
+	}
+	
+	String getLocalMapping(String mappedid, String peername) throws SQLException{
+		final PreparedStatement idPS = dbConn.getConnection().prepareStatement("SELECT id FROM mappings WHERE mappedid = ? AND mappedpeer = ?");
+		idPS.setString(1, mappedid);
+		idPS.setString(2, peername);
+		
+		ResultSet mappedRS = idPS.executeQuery();
+		if(mappedRS.next())
+			return(mappedRS.getString("id"));
+		else
+			return(mappedid);		
+	}
+
 	public String getPeerName(){
 		return peerName;
 	}
-
+	
 	public List<String> getUpdates(Filter filter, VersionVector vv) throws SQLException {
 		flushChangeLogTable();
 		System.out.println("GETTING UPDATES FOR: " + vv);
 		System.out.println("WITH FILTOR:"+filter);
 		List<String> updates = new LinkedList<String>();
 		
-		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM data_versions INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY cuname");
+		String withMetadata = "";//TODO:FOR TESTING
+		String withoutMetadata = "";//TODO:FOR TESTING
+		
+		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM data_versions INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter");
 			
 		//for each cuentityid with version newer than the one in vv
 		while(cuentityidRS.next()){
@@ -484,6 +541,8 @@ public class Database {
 				//get data per attribute	
 				tabledata += " "+Utility.encode(attribute)+":"+Utility.encode(valueRS.getString(attribute))+":"+dbUtil.getColumnType(tablename, attribute);
 				
+				withoutMetadata += valueRS.getString(attribute);
+				
 				prevtablename = tablename;
 			}
 			
@@ -497,11 +556,16 @@ public class Database {
 
 			String cudata = "("+Utility.encode(cuname)+" "+cuentityid+" "+Utility.encode(cuVV.toString())+" "+tabledata+")";
 			updates.add(cudata);
+			
+			withMetadata += cudata;
 		}
+		
+		System.out.println("WITH METADATA:"+withMetadata.length());
+		System.out.println("WITHOUT METADATA:"+withoutMetadata.length());
 		
 		return(updates);
 	}
-	
+
 	private String getZWTriggerName(TriggerOperation op, String tablename){
 		String opName = null;
 		
@@ -523,7 +587,7 @@ public class Database {
 		
 		return("zwtrigproc_"+opName+"_"+tablename);
 	}
-
+	
 	private void initMetadata() throws SQLException {
 		System.out.println("Creating system tables...");
 		assertChangeLogTable();
@@ -531,6 +595,7 @@ public class Database {
 		assertChangeUnitEntitiesTable();
 		assertCUDefVersionsTable();
 		assertDataVersionsTable();
+		assertMappingsTable();
 		assertSchemaVersionsTable();
 		assertVariablesTable();
 		assertVersionVectorTable();
@@ -558,23 +623,12 @@ public class Database {
 		
 		System.out.println("Init done!");
 	}
-	
-	private void assertEntityIDColumns() throws SQLException {
-		ResultSet tableRS = dbUtil.getTables();
-		
-		while(tableRS.next()){
-			String tablename = tableRS.getString("TABLE_NAME");
-			
-			if(isSystemTable(tablename))
-				continue;
-			
-			if(!dbUtil.tableHasColumn(tablename, "entityid"))
-				dbConn.executeUpdate("ALTER TABLE "+tablename+" ADD COLUMN entityid character(36)");
-		}
-	}
 
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
 	public void insertUpdate(String updateString) throws SQLException {
+		if(syncPartner == null)
+			throw new IllegalStateException("No sync partner set");
+		
 		dbConn.getConnection().setAutoCommit(false);
 		String[] cuMsg = updateString.split(" ", 4);
 		String cuname = Utility.decode(cuMsg[0]);
@@ -586,11 +640,11 @@ public class Database {
 		while(pscTab.hasNext()){
 			String[] tabMsg = pscTab.next().split(" ");
 			String tablename = Utility.decode(tabMsg[0]);
-			String entityid = tabMsg[1];
+			String entityid = getLocalMapping(tabMsg[1], syncPartner);
 			
 			List<String> attributes = new LinkedList<String>();
-			List<String> values = new LinkedList<String>();
-			List<Integer> types = new LinkedList<Integer>();
+			Map<String, String> values = new HashMap<String, String>();
+			Map<String, Integer> types = new HashMap<String, Integer>();
 			for(int i = 2; i < tabMsg.length; i++){
 				String[] valMsg = tabMsg[i].split(":");
 				
@@ -602,8 +656,8 @@ public class Database {
 				int type = Integer.parseInt(valMsg[2]);
 				
 				attributes.add(attribute);
-				values.add(value);
-				types.add(type);
+				values.put(attribute, value);
+				types.put(attribute, type);
 			}
 			
 			PreparedStatement updatePS = null;
@@ -613,11 +667,11 @@ public class Database {
 				updatePS = dbUtil.prepareUpdateStatement(tablename, attributes, "entityid");
 			
 			int valDex = 1;
-			Iterator<String> valIter = values.iterator();
-			Iterator<Integer> typeIter = types.iterator();
-			while(valIter.hasNext()){
-				String value = valIter.next();
-				int type = typeIter.next();
+			Iterator<String> attrIter = attributes.iterator();
+			while(attrIter.hasNext()){
+				String attribute = attrIter.next();
+				String value = values.get(attribute);
+				int type = types.get(attribute);
 				
 				if(dbUtil.isString(type))
 					updatePS.setString(valDex, value);
@@ -630,7 +684,59 @@ public class Database {
 			updatePS.setString(valDex, entityid);
 			System.out.println("EXECUTING: "+updatePS);
 			detachTriggers(tablename);
-			updatePS.executeUpdate();
+			try{
+				updatePS.executeUpdate();
+			}
+			catch(MySQLIntegrityConstraintViolationException e){ //TODO:Cross-site mapping patch
+				final Pattern p = Pattern.compile(".*Duplicate entry '(.*)' for key '(.*)'");
+				final Matcher m = p.matcher(e.toString());
+				
+				if(m.matches()){
+					System.err.println("EXCEPTION:"+e.toString());
+					String entry = m.group(1);
+					String key = m.group(2);
+					
+					List<String> keyColumns = dbUtil.getColumnsOfIndex(tablename, key);
+
+					final PreparedStatement ps = dbUtil.prepareSelectStatement(tablename, Arrays.asList("entityid"), keyColumns); //dbConn.getConnection().prepareStatement("SELECT entityid FROM "+tablename+" WHERE "+key+" = ?");
+					
+					int keyColDex = 1;
+					for(String keyColumn : keyColumns){
+						if(dbUtil.isString(types.get(keyColumn)))
+							ps.setString(keyColDex, values.get(keyColumn));
+						else
+							ps.setObject(keyColDex, values.get(keyColumn));
+						
+						keyColDex++;
+					}
+					System.out.println("EXECUTING FOR MAPPING:"+ps);
+					ResultSet rs = ps.executeQuery();
+					rs.next();
+					
+					String id = rs.getString("entityid");
+					setMapping(id, entityid, syncPartner);
+					
+					updatePS = dbUtil.prepareUpdateStatement(tablename, attributes, "entityid");
+					
+					valDex = 1;
+					attrIter = attributes.iterator();
+					while(attrIter.hasNext()){
+						String attribute = attrIter.next();
+						String value = values.get(attribute);
+						int type = types.get(attribute);
+						
+						if(dbUtil.isString(type))
+							updatePS.setString(valDex, value);
+						else
+							updatePS.setObject(valDex, value);
+						
+						valDex++;
+					}
+					updatePS.setString(valDex, id);
+					System.out.println("EXECUTING AFTER MAPPING: "+updatePS);
+					updatePS.executeUpdate();
+				}
+			}
 			attachTriggers(tablename);
 			
 			cuVV.versionChangeUnit(cuentityid);
@@ -643,10 +749,39 @@ public class Database {
 		return(zwSystemTables.contains(tablename));
 	}
 
+	/**
+	 * @param id
+	 * @param mappedid
+	 * @param peername
+	 * @return True when a new mapping was inserted, false when an existing mapping was updated 
+	 * @throws SQLException
+	 */
+	boolean setMapping(String id, String mappedid, String peername) throws SQLException{
+		final List<String> columns = Arrays.asList("mappedid", "mappedpeer");
+		
+		boolean newMapping = false;
+		PreparedStatement ps = null;
+		if(getMapping(id, peername).equals(id)){
+			ps = dbUtil.prepareInsertStatement("mappings", columns, "id");
+			newMapping = true;
+		}
+		else{
+			ps = dbUtil.prepareUpdateStatement("mappings", columns, "id");
+			newMapping = false;
+		}
+		
+		ps.setString(1, mappedid);
+		ps.setString(2, peername);
+		ps.setString(3, id);
+		ps.executeUpdate();
+		
+		return(newMapping);
+	}
+
 	public List<String> queryToStringList(String query) throws SQLException {
 		return (resultSetToStringList(dbConn.executeQuery(query)));
 	}
-
+	
 	private List<String> resultSetToStringList(ResultSet results)
 			throws SQLException {
 		List<String> stringList = new LinkedList<String>();
@@ -678,7 +813,6 @@ public class Database {
 		
 		zwSystemTables.add(tablename);
 	}
-	
 	/**
 	 * Given a change unit entityid, updates the change unit's version
 	 * to this site's current clock value and then increments the clock
@@ -694,6 +828,7 @@ public class Database {
 		
 		clock.incValue();
 	}
+	
 	public String versionString() throws SQLException {
 		flushChangeLogTable();
 		
@@ -710,7 +845,11 @@ public class Database {
 		return (versionString.trim());
 	}
 	
-	public String filterString() throws SQLException{
-		return(filter.toString());
+	public void setSyncPartner(String syncPartner){
+		this.syncPartner = syncPartner;
+	}
+	
+	public void unsetSyncPartner(){
+		this.syncPartner = null;
 	}
 }

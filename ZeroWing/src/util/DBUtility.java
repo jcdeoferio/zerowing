@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -169,6 +170,18 @@ public class DBUtility {
 		return(columnRS.getString("column_type"));
 	}
 	
+	public List<String> getColumnsOfIndex(String tablename, String indexname) throws SQLException{
+		List<String> columns = new LinkedList<String>();
+		ResultSet indicesRS = dbConn.getConnection().getMetaData().getIndexInfo(null, null, tablename, false, true);
+		
+		while(indicesRS.next()){
+			if(indicesRS.getString("INDEX_NAME").equals(indexname))
+				columns.add(indicesRS.getString("COLUMN_NAME"));
+		}
+		
+		return(columns);
+	}
+	
 	public boolean isBoolean(int type){
 		return(type == Types.BOOLEAN);
 	}
@@ -267,6 +280,15 @@ public class DBUtility {
 			tables.add(results.getString("tablename"));
 		
 		return(tables);
+	}
+	
+	public PreparedStatement prepareSelectStatement(String tablename, List<String> selectColumns, List<String> whereColumns) throws SQLException{
+		//query = "SELECT sColumn1, sColumn2, ... FROM tablename WHERE wColumn1 = ? AND wColumn2 = ? AND ..."
+		String query = "SELECT "+Utility.commaSeparate(selectColumns)+" FROM "+tablename+" WHERE "+Utility.separatorSeparate(whereColumns, " = ? AND ")+" = ?";
+		
+		PreparedStatement selectPS = dbConn.getConnection().prepareStatement(query);
+		
+		return(selectPS);
 	}
 	
 	public PreparedStatement prepareInsertStatement(String tablename, List<String> columns, String key) throws SQLException{

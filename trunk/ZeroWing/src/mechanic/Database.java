@@ -34,6 +34,7 @@ public class Database {
 	private String peerName;
 	private Filter filter;
 	private String syncPartner;
+	public boolean newSystemTables;
 	
 	private static Set<String> zwSystemTables = new HashSet<String>();
 	
@@ -50,7 +51,7 @@ public class Database {
 		syncPartner = null;
 		
 		//Unhandled SQL Exception, causes program termination.
-		initMetadata();
+		newSystemTables = initMetadata();
 	}
 	
 	/**
@@ -81,28 +82,28 @@ public class Database {
 
 	}
 
-	void assertChangeLogTable() throws SQLException{
-		tableAsserter("changelog", "(cuname varchar(160), cuentityid varchar(160), changedon timestamp)");
+	boolean assertChangeLogTable() throws SQLException{
+		return tableAsserter("changelog", "(cuname varchar(160), cuentityid varchar(160), changedon timestamp)");
 	}
 	
-	void assertChangeUnitEntitiesTable() throws SQLException {
-		tableAsserter("changeunitentities", "(entityid varchar(160), tablename varchar(160), attribute varchar(160), cuentityid varchar(160), cuname varchar(160))");
+	boolean assertChangeUnitEntitiesTable() throws SQLException {
+		return tableAsserter("changeunitentities", "(entityid varchar(160), tablename varchar(160), attribute varchar(160), cuentityid varchar(160), cuname varchar(160))");
 	}
 	
-	void assertChangeUnitJoinsTable() throws SQLException{
-		tableAsserter("changeunitjoins", "(cuname varchar(160), tablename varchar(160), joinstr varchar(160))");
+	boolean assertChangeUnitJoinsTable() throws SQLException{
+		return tableAsserter("changeunitjoins", "(cuname varchar(160), tablename varchar(160), joinstr varchar(160))");
 	}
 	
-	void assertChangeUnitsTable() throws SQLException {
-		tableAsserter("changeunits", "(cuname varchar(160), tablename varchar(160), attribute varchar(160))");
+	boolean assertChangeUnitsTable() throws SQLException {
+		return tableAsserter("changeunits", "(cuname varchar(160), tablename varchar(160), attribute varchar(160))");
 	}
 	
-	void assertCUDefVersionsTable() throws SQLException {
-		tableAsserter("cudef_versions", "(cuname varchar(160), peername varchar(160), counter integer)");
+	boolean assertCUDefVersionsTable() throws SQLException {
+		return tableAsserter("cudef_versions", "(cuname varchar(160), peername varchar(160), counter integer)");
 	}
 
-	void assertDataVersionsTable() throws SQLException{
-		tableAsserter("data_versions", "(cuentityid varchar(160), peername varchar(160), counter integer)");
+	boolean assertDataVersionsTable() throws SQLException{
+		return tableAsserter("data_versions", "(cuentityid varchar(160), peername varchar(160), counter integer)");
 	}
 	
 	private void assertEntityIDColumns() throws SQLException {
@@ -119,25 +120,26 @@ public class Database {
 		}
 	}
 	
-	void assertMappingsTable() throws SQLException{
-		tableAsserter("mappings", "(id character(36), mappedid character(36), mappedpeer character(160))");
+	boolean assertMappingsTable() throws SQLException{
+		return tableAsserter("mappings", "(id character(36), mappedid character(36), mappedpeer character(160))");
 	}
 	
-	void assertSchemaVersionsTable() throws SQLException{
-		tableAsserter("schema_versions", "(tablename varchar(160), peername varchar(160), counter integer)");
+	boolean assertSchemaVersionsTable() throws SQLException{
+		return tableAsserter("schema_versions", "(tablename varchar(160), peername varchar(160), counter integer)");
 	}
 	
-	void assertTempTables() throws SQLException{
-		tableAsserter(zwTempEntityIDTable, "(entityid character(36))");
-		tableAsserter(zwTempCUEntityIDTable, "(cuentityid character(36))");
+	boolean assertTempTables() throws SQLException{
+		Boolean ret = tableAsserter(zwTempEntityIDTable, "(entityid character(36))");
+		ret &= tableAsserter(zwTempCUEntityIDTable, "(cuentityid character(36))");
+		return ret;
 	}
 	
-	void assertVariablesTable() throws SQLException{
-		tableAsserter("variables", "(varname varchar(20), value varchar(160))");
+	boolean assertVariablesTable() throws SQLException{
+		return tableAsserter("variables", "(varname varchar(20), value varchar(160))");
 	}
 	
-	void assertVersionVectorTable() throws SQLException{
-		tableAsserter("versionvector", "(peername varchar(160), maxcounter integer)");
+	boolean assertVersionVectorTable() throws SQLException{
+		return tableAsserter("versionvector", "(peername varchar(160), maxcounter integer)");
 	}
 	
 	void attachInsertTrigger(String tablename) throws SQLException{
@@ -268,7 +270,46 @@ public class Database {
 		return(vv.compareTo(cuVV));
 	}
 	
-	private void createChangeUnitsPerTable() throws SQLException {
+	public String[] getTables() throws SQLException{
+		ResultSet tableRS = dbUtil.getTables();
+		LinkedList<String> list = new LinkedList<String>();
+		while(tableRS.next()){
+			String tablename = tableRS.getString("TABLE_NAME");
+			
+			if(isSystemTable(tablename) || dbUtil.selectCount("FROM changeunits WHERE tablename = '"+tablename+"'") > 0)
+				continue;
+			list.add(tablename);
+		}
+		String[] array = new String[list.size()];
+		list.toArray(array);
+		return array;
+	}
+	
+	public String[] getColumns(String tablename) throws SQLException{
+		ResultSet columnRS = dbUtil.getColumns(tablename);
+		LinkedList<String> list = new LinkedList<String>();
+		while(columnRS.next()){
+			String attribute = columnRS.getString("COLUMN_NAME");
+			
+			if(attribute.equals("entityid"))
+				continue;
+			
+			//let autoincrementing columns assign their own IDs 
+			if(columnRS.getString("IS_AUTOINCREMENT").equals("YES"))
+				continue;
+			
+			list.add(attribute);
+		}
+		String[] array = new String[list.size()];
+		list.toArray(array);
+		return array;
+	}
+	
+	public void newChangeUnit(String tablename, List<Pair<String, String>> attrEntries) throws SQLException{
+		new ChangeUnit("cu_"+tablename, attrEntries, dbConn).saveToDB();
+	}
+	
+	public void createChangeUnitsPerTable() throws SQLException {
 		ResultSet tableRS = dbUtil.getTables();
 		
 		while(tableRS.next()){
@@ -588,24 +629,24 @@ public class Database {
 		return("zwtrigproc_"+opName+"_"+tablename);
 	}
 	
-	private void initMetadata() throws SQLException {
+	private boolean initMetadata() throws SQLException {
 		System.out.println("Creating system tables...");
-		assertChangeLogTable();
-		assertChangeUnitsTable();
-		assertChangeUnitEntitiesTable();
-		assertCUDefVersionsTable();
-		assertDataVersionsTable();
-		assertMappingsTable();
-		assertSchemaVersionsTable();
-		assertVariablesTable();
-		assertVersionVectorTable();
-		assertTempTables();
+		boolean newSystemTables = assertChangeLogTable();
+		newSystemTables &= assertChangeUnitsTable();
+		newSystemTables &= assertChangeUnitEntitiesTable();
+		newSystemTables &= assertCUDefVersionsTable();
+		newSystemTables &= assertDataVersionsTable();
+		newSystemTables &= assertMappingsTable();
+		newSystemTables &= assertSchemaVersionsTable();
+		newSystemTables &= assertVariablesTable();
+		newSystemTables &= assertVersionVectorTable();
+		newSystemTables &= assertTempTables();
 		
 		assertEntityIDColumns();
 		
 		//TODO:way for users to specify their own change units
-		System.out.println("Creating change units per table...");
-		createChangeUnitsPerTable();
+		//System.out.println("Creating change units per table...");
+		//createChangeUnitsPerTable();
 		
 		//TODO:way for users to specify their own filter
 		if(!dbUtil.variableExists(Filter.FILTER_VAR_NAME)){
@@ -622,6 +663,7 @@ public class Database {
 		generateEntityMetadata();
 		
 		System.out.println("Init done!");
+		return newSystemTables; //specifies if the system tables are new tables
 	}
 
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
@@ -806,12 +848,15 @@ public class Database {
 	/**
 	 * Creates system table if not already extant.
 	 */
-	private void tableAsserter(String tablename, String columnList) throws SQLException {
+	private boolean tableAsserter(String tablename, String columnList) throws SQLException {
+		boolean ret = false;
 		if(!dbUtil.tableExists(tablename)){
 			dbConn.execute("CREATE TABLE "+tablename+" "+columnList);
+			ret = true;
 		}
 		
 		zwSystemTables.add(tablename);
+		return ret;
 	}
 	/**
 	 * Given a change unit entityid, updates the change unit's version

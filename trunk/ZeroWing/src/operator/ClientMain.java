@@ -105,12 +105,6 @@ public class ClientMain extends javax.swing.JFrame {
 			}
 		});
 
-		newPeerIP.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				newPeerIPActionPerformed(evt);
-			}
-		});
-
 		jLabel4.setText("IP");
 
 		jLabel5.setText("Port");
@@ -304,10 +298,6 @@ public class ClientMain extends javax.swing.JFrame {
 		c.addPeerManual(newPeerIP.getText(), Integer.parseInt(newPeerPort
 				.getText()));
 		updatePeerListActionPerformed(null);
-	}
-
-	private void newPeerIPActionPerformed(java.awt.event.ActionEvent evt) {
-		// TODO add your handling code here:
 	}
 
 	/**

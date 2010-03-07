@@ -11,6 +11,8 @@
 
 package operator;
 
+import java.sql.SQLException;
+
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
@@ -25,7 +27,7 @@ import client.Client;
  */
 public class ClientLauncher extends javax.swing.JFrame {
 	private static final long serialVersionUID = -7368758110714928467L;
-	
+
 	private void fillFields() {
 		fieldArray = new JTextField[] { nodeName, trackerIP, trackerPort,
 				dbName, dbIP, dbPort, dbUser };
@@ -514,9 +516,26 @@ public class ClientLauncher extends javax.swing.JFrame {
 			return;
 		}
 		c.startClient();
-		new ClientMain(c).setVisible(true);
 		saveSettings();
 		setVisible(false);
+		try {
+			if (c.db.newSystemTables) {//
+				int ans = JOptionPane
+						.showConfirmDialog(
+								this,
+								"Do you want ZeroWing to Automatically add the Change Units?",
+								"ZeroWing", JOptionPane.YES_NO_OPTION);
+				if (ans == JOptionPane.YES_OPTION) {
+					c.db.createChangeUnitsPerTable();
+				} else {
+					new NewChangeUnitForm_TableList(c).setVisible(true);
+				}
+			}
+		} catch (SQLException e) {
+			System.out.println("Change Units not created");
+			e.printStackTrace();
+		}
+		new ClientMain(c).setVisible(true);
 	}
 
 	private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {

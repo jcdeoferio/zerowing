@@ -24,7 +24,7 @@ import util.Utility;
 public class Client implements ConsoleSystem{
 	HashMap<SimpleConnection, SyncUpdateListener> waitingUpdates;
 	
-	Database db;
+	public Database db;
 	String peerName;
 	String trackerAddress;
 	int trackerPort;

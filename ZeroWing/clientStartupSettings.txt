@@ -1,7 +1,7 @@
-Kevin
-192.168.137.5
-8888
-zerodb
+jcdeoferio
+localhost
+9999
+zerodb2
 localhost
 5432
 postgres

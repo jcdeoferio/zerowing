@@ -305,8 +305,8 @@ public class Database {
 		return array;
 	}
 	
-	public void newChangeUnit(String tablename, List<Pair<String, String>> attrEntries) throws SQLException{
-		new ChangeUnit("cu_"+tablename, attrEntries, dbConn).saveToDB();
+	public ChangeUnit newChangeUnit(String tablename, List<Pair<String, String>> attrEntries) throws SQLException{
+		return new ChangeUnit("cu_"+tablename, attrEntries, dbConn);
 	}
 	
 	public void createChangeUnitsPerTable() throws SQLException {

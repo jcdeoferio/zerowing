@@ -177,4 +177,19 @@ public class ChangeUnit {
 	public List<Pair<String, String>> getAttributes() {
 		return(new LinkedList<Pair<String, String>>(attributes));
 	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("{ ");
+		for(Pair<String,String> attribute: attributes){
+			sb.append(attribute.second + " , ");
+		}
+		sb.replace(sb.length()-3, sb.length(), " }");
+		sb.append(" }");
+		return sb.toString();
+	}
 }

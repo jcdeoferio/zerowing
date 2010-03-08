@@ -21,10 +21,105 @@ public class Nexus {
 	public static Nexus getNexus(String fileTarget){
 		return new Nexus(fileTarget);
 	}
+	public static Nexus getRandomNexus(
+			long delay,
+			String dbType,
+			String dbName,
+			int dbPort, 
+			int peers, 
+			int inserts, 
+			int syncs, int updates, int deletes
+		){
+		return new Nexus(
+				delay,
+				dbType,
+				dbName,
+				dbPort,
+				peers,
+				inserts,
+				syncs, updates, deletes
+			);
+	}
+	
 	public static void main(String[] args){
 		@SuppressWarnings("unused")
-		Nexus one = getNexus("testdata.txt");
+//		Nexus one = getNexus("testdata.txt");
+		Nexus one = getRandomNexus(
+				1,
+				"postgresql",
+				"cimbitest",
+				8870,
+				3, //:TODO change number of peers
+				1000,
+				600,
+				1000,
+				100
+		);
 	}
+	
+	
+	/**
+	 * USED FOR TESTING PURPOSES
+	 * 
+	 * Nodes are made from node1 -> nodex ->  nodemax, 1 < x < nodemax
+	 * password is 'password' without quotes
+	 * @param dbType 
+	 * @param dbName 
+	 * @param dbPort
+	 * @param peers
+	 * @param inserts
+	 * @param syncs
+	 * @param updates
+	 * @param deletes
+	 */
+	private Nexus(
+			long delay,
+			String dbType, String dbName, int dbPort, 
+			int peers, int inserts, int syncs, 
+			int updates, int deletes){
+		sites = new Site[peers];
+		conns = new HashMap<String, AddressPort>();
+		String dbUser = "postgres";
+		String dbPassword = "password";
+		for (int i=0;i<peers; i++){
+			String peerName = "peer"+i;
+			String dbNameMine = dbName+i;
+			System.out.println(">> setting up client "+peerName);
+			Client c = Client.getClient(
+					peerName, 
+					"127.0.0.1", 
+					8871, 
+					dbType, 
+					"127.0.0.1", 
+					dbPort, 
+					dbNameMine, 
+					dbUser, 
+					dbPassword);
+			
+			Site s = Site.getSite(c, "");
+			sites[i] = s;
+		}
+		for(Site s : sites){
+			System.out.println(s);
+		}
+		NexusRandomRunner nr = new NexusRandomRunner(
+				sites, delay,
+				inserts, syncs, 
+				updates, deletes
+		);
+		nr.startClients();
+		for(Site s: sites){
+			AddressPort ap;
+			String ip = s.as.c.getIP();
+			int port = s.as.c.getClientPeerServerPort();
+			ap = new AddressPort(s.as.c.getName(),ip,port);
+			System.out.println(ap);
+			conns.put(ap.getName(), ap);
+		}
+		nr.setAddMap(conns);
+		nr.run();
+	}
+	
 	private Nexus(String fileTarget){
 		sites = grabData(fileTarget);
 		conns = new HashMap<String, AddressPort>();

@@ -1,7 +1,7 @@
 jcdeoferio
 localhost
 9999
-zerodb
+zerodb2
 localhost
 5432
 postgres

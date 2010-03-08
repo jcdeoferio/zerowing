@@ -518,28 +518,28 @@ public class ClientLauncher extends javax.swing.JFrame {
 		c.startClient();
 		saveSettings();
 		setVisible(false);
-		try {
-			if (c.db.newSystemTables) {
-				int ans = JOptionPane
-						.showConfirmDialog(
-								this,
-								"Do you want ZeroWing to Automatically add the Change Units?",
-								"ZeroWing", JOptionPane.YES_NO_OPTION);
-				if (ans == JOptionPane.YES_OPTION) {
-					c.db.createChangeUnitsPerTable();
-				} else {
-					String a[] = c.db.getTables();
-					if(a.length == 0){
-						c.db.createChangeUnitsPerTable();
-					}else{
-						new NewChangeUnitForm_TableList(c).setVisible(true);
-					}
-				}
-			}
-		} catch (SQLException e) {
-			System.out.println("Change Units not created");
-			e.printStackTrace();
-		}
+		// try {
+		// if (c.db.newSystemTables) {
+		// int ans = JOptionPane
+		// .showConfirmDialog(
+		// this,
+		// "Do you want ZeroWing to Automatically add the Change Units?",
+		// "ZeroWing", JOptionPane.YES_NO_OPTION);
+		// if (ans == JOptionPane.YES_OPTION) {
+		// c.db.createChangeUnitsPerTable();
+		// } else {
+		// String a[] = c.db.getTables();
+		// if(a.length == 0){
+		// c.db.createChangeUnitsPerTable();
+		// }else{
+		// new NewChangeUnitForm_TableList(c).setVisible(true);
+		// }
+		// }
+		// }
+		// } catch (SQLException e) {
+		// System.out.println("Change Units not created");
+		// e.printStackTrace();
+		// }
 		new ClientMain(c).setVisible(true);
 	}
 

@@ -40,7 +40,7 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
             public int getSize() { return strings.length; }
             public Object getElementAt(int i) { return strings[i]; }
         });
-		tableList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		tableList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 	}
 
 	/** This method is called from within the constructor to
@@ -119,7 +119,7 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
 
     private void addChangeUnitsButtonActionPerformed(java.awt.event.ActionEvent evt) {
     	try {
-			new NewChangeUnitForm_ColumnList(tableList.getSelectedValue().toString(), c);
+			new NewChangeUnitForm_ColumnList(tableList.getSelectedValues(), c).setVisible(true);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}

@@ -13,6 +13,8 @@ package operator;
 
 import java.awt.List;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import javax.swing.AbstractListModel;
@@ -37,12 +39,15 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 	}
 
 	private Client c;
-	private String tableName;
+	private String[] tableNames;
 	private LinkedList<ChangeUnit> changeUnits;
 
-	public NewChangeUnitForm_ColumnList(String tablename, Client c)
+	public NewChangeUnitForm_ColumnList(Object[] tablenames, Client c)
 			throws SQLException {
-		tableName = tablename;
+		tableNames = new String[tablenames.length]; 
+		for(int i=0;i<tablenames.length;i++){
+			tableNames[i] = tablenames[i].toString();
+		}
 		this.c = c;
 		initComponents();
 		initComponents2();
@@ -70,7 +75,13 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 		// public Object getElementAt(int i) { return strings[i]; }
 		// });
 
-		String[] columns = c.db.getColumns(tableName);
+		LinkedList<String> columns = new LinkedList<String>();
+		for(String tableName : tableNames){
+			String cols[] = c.db.getColumns(tableName);
+			for(String col:cols){
+				columns.add(tableName+" "+col);
+			}
+		}
 
 		for (String column : columns)
 			unselectedList.add(column);
@@ -316,14 +327,18 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 	private void createChangeUnitActionPerformed(java.awt.event.ActionEvent evt){
 		if(selectedList.getItemCount() <= 0)
 			return;
-		String[] columns = selectedList.getItems();
+		String[] tb_columns = selectedList.getItems();
 		LinkedList<Pair<String,String>> attrEntries = new LinkedList<Pair<String,String>>();
+		HashSet<String> tables = new HashSet<String>();
 		
-		for(String column : columns)
-			attrEntries.add(new Pair<String, String>(tableName, column));
+		for(String tb_col : tb_columns){
+			String[] p = tb_col.split(" "); 
+			attrEntries.add(new Pair<String, String>(p[0], p[1]));
+			tables.add(p[0]);
+		}
 		
 		try {
-			ChangeUnit cu = c.db.newChangeUnit(tableName, attrEntries);
+			ChangeUnit cu = c.db.newChangeUnit(tables.toString(), attrEntries);
 			changeUnits.addLast(cu);
 			changeUnitList.repaint();
 		} catch (SQLException e) {

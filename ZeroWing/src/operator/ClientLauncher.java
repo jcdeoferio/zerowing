@@ -519,7 +519,7 @@ public class ClientLauncher extends javax.swing.JFrame {
 		saveSettings();
 		setVisible(false);
 		try {
-			if (c.db.newSystemTables) {//
+			if (c.db.newSystemTables) {
 				int ans = JOptionPane
 						.showConfirmDialog(
 								this,
@@ -528,7 +528,12 @@ public class ClientLauncher extends javax.swing.JFrame {
 				if (ans == JOptionPane.YES_OPTION) {
 					c.db.createChangeUnitsPerTable();
 				} else {
-					new NewChangeUnitForm_TableList(c).setVisible(true);
+					String a[] = c.db.getTables();
+					if(a.length == 0){
+						c.db.createChangeUnitsPerTable();
+					}else{
+						new NewChangeUnitForm_TableList(c).setVisible(true);
+					}
 				}
 			}
 		} catch (SQLException e) {

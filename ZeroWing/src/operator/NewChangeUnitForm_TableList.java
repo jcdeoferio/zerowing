@@ -11,10 +11,9 @@
 
 package operator;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import javax.swing.DefaultListModel;
+import javax.swing.ListSelectionModel;
 
 import client.Client;
 
@@ -41,6 +40,7 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
             public int getSize() { return strings.length; }
             public Object getElementAt(int i) { return strings[i]; }
         });
+		tableList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 	}
 
 	/** This method is called from within the constructor to
@@ -118,7 +118,11 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
     }// </editor-fold>
 
     private void addChangeUnitsButtonActionPerformed(java.awt.event.ActionEvent evt) {
-        // TODO add your handling code here:
+    	try {
+			new NewChangeUnitForm_ColumnList(tableList.getSelectedValue().toString(), c);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
     }
 
     private void doneButtonActionPerformed(java.awt.event.ActionEvent evt) {

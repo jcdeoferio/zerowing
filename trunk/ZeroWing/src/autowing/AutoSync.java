@@ -46,7 +46,7 @@ public class AutoSync implements ClientInterface{
 		}
 		return false;
 	}
-	private void doCommand(AutoSyncCommand asc){
+	public void doCommand(AutoSyncCommand asc){
 		asc.doCommand(this);
 	}
 	public void addCommand(AutoSyncCommand asc){

@@ -40,6 +40,8 @@ public class NexusRandomRunner extends NexusRunner {
 	public void run() {
 		log("NexusRandomRunner started");
 		
+		prelimInserts();
+		
 		insertRun(inserts);
 		syncRun(syncs);
 		

@@ -92,7 +92,6 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 				return changeUnits.size();
 			}
 			
-			@Override
 			public Object getElementAt(int arg0) {	
 				return changeUnits.get(arg0).toString();
 			}

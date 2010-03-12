@@ -13,7 +13,7 @@ public class AutoSyncCommand {
 	}
 	
 	public void doCommand(AutoSync as){
-		
+		as.sync();
 	}
 	public int getTime(){
 		return (int)(time*scale);

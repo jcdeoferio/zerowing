@@ -142,6 +142,12 @@ public class Database {
 		return tableAsserter("versionvector", "(peername varchar(160), maxcounter integer)");
 	}
 	
+	//TODO: finish
+	final static String zwForeignKeyTable = "zwforeignkeys";	
+	boolean assertForeignKeyTable() throws SQLException{
+		return tableAsserter(zwForeignKeyTable, "()");
+	}
+	
 	void attachInsertTrigger(String tablename) throws SQLException{
 		if(!dbUtil.tableExists(tablename))
 			throw new IllegalArgumentException("Table "+tablename+" does not exist!");
@@ -645,8 +651,8 @@ public class Database {
 		assertEntityIDColumns();
 		
 		//TODO:way for users to specify their own change units
-		//System.out.println("Creating change units per table...");
-		//createChangeUnitsPerTable();
+		System.out.println("Creating change units per table...");
+		createChangeUnitsPerTable();
 		
 		//TODO:way for users to specify their own filter
 		if(!dbUtil.variableExists(Filter.FILTER_VAR_NAME)){

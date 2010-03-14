@@ -6,6 +6,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -148,13 +149,23 @@ public class DBUtility {
 		return(dbConn.getConnection().getMetaData().getTables(null, null, null, new String[]{"VIEW"}));
 	}
 	
+	final HashMap<String, HashMap<String, Integer>> memoType = new HashMap<String, HashMap<String,Integer>>();
+	
 	public int getColumnType(String tablename, String column) throws SQLException{
-		ResultSet columnRS = dbConn.getConnection().getMetaData().getColumns(null, "public", tablename, column);
-		
-		if(!columnRS.next())
-			throw new IllegalArgumentException(column + " does not exist in "+tablename);
-		
-		return(columnRS.getInt("DATA_TYPE"));
+		if(!memoType.containsKey(tablename)){	
+			ResultSet columnRS = dbConn.getConnection().getMetaData().getColumns(null, "public", tablename, null);
+			
+			if(!columnRS.next())
+				throw new IllegalArgumentException(column + " does not exist in "+tablename);
+			
+			HashMap<String, Integer> tabMemo = new HashMap<String, Integer>();
+			do{
+				tabMemo.put(columnRS.getString("COLUMN_NAME"), columnRS.getInt("DATA_TYPE"));
+			}while(columnRS.next());
+			
+			memoType.put(tablename, tabMemo);
+		}
+		return(memoType.get(tablename).get(column));
 	}
 	
 	public String getColumnTypeIS(String tablename, String column) throws SQLException{

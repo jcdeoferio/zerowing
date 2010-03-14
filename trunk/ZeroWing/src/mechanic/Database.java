@@ -1,5 +1,6 @@
 package mechanic;
 
+import java.rmi.UnexpectedException;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,6 +12,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.swing.text.StyledEditorKit.ForegroundAction;
 
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
@@ -142,10 +145,9 @@ public class Database {
 		return tableAsserter("versionvector", "(peername varchar(160), maxcounter integer)");
 	}
 	
-	//TODO: finish
 	final static String zwForeignKeyTable = "zwforeignkeys";	
 	boolean assertForeignKeyTable() throws SQLException{
-		return tableAsserter(zwForeignKeyTable, "()");
+		return tableAsserter(zwForeignKeyTable, "(tablename varchar(160), column varchar(160), foreigntable varchar(160), foreignkey varchar(160))");
 	}
 	
 	void attachInsertTrigger(String tablename) throws SQLException{
@@ -332,9 +334,11 @@ public class Database {
 				if(attribute.equals("entityid"))
 					continue;
 				
+				/*
 				//let autoincrementing columns assign their own IDs 
 				if(columnRS.getString("IS_AUTOINCREMENT").equals("YES"))
 					continue;
+				*/
 				
 				attrEntries.add(new Pair<String, String>(tablename, attribute));
 			}
@@ -543,14 +547,27 @@ public class Database {
 		return peerName;
 	}
 	
+	private ResultSet getForeignKey(String tablename, String column) throws SQLException{
+		final PreparedStatement foreignKeyPS = dbConn.getConnection().prepareStatement("SELECT foreigntable, foreignkey FROM "+zwForeignKeyTable+" WHERE tablename = ? AND column = ?");
+		foreignKeyPS.setString(1, tablename);
+		foreignKeyPS.setString(2, column);
+		
+		ResultSet foreignKeyRS = foreignKeyPS.executeQuery();
+		
+		if(foreignKeyRS.next())
+			return(foreignKeyRS);
+		else
+			return(null);
+	}
+ 
 	public List<String> getUpdates(Filter filter, VersionVector vv) throws SQLException {
 		flushChangeLogTable();
-		System.out.println("GETTING UPDATES FOR: " + vv);
+		System.out.println(Utility.now()+"GETTING UPDATES FOR: " + vv);
 		System.out.println("WITH FILTOR:"+filter);
 		List<String> updates = new LinkedList<String>();
 		
-		String withMetadata = "";//TODO:FOR TESTING
-		String withoutMetadata = "";//TODO:FOR TESTING
+		StringBuilder withMetadata = new StringBuilder();//TODO:FOR TESTING
+		StringBuilder withoutMetadata = new StringBuilder();//TODO:FOR TESTING
 		
 		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM data_versions INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter");
 			
@@ -561,7 +578,7 @@ public class Database {
 			
 			//for each table in cuentityid's change unit
 			String prevtablename = "";
-			String tabledata = "";
+			StringBuilder tabledata = new StringBuilder();
 			ResultSet valueRS = null;
 			
 			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute FROM changeunitentities cue WHERE cuentityid = ? AND EXISTS(SELECT cuentityid FROM "+cuname+" WHERE cuentityid = cue.cuentityid AND "+filter.getForCU(cuname)+") ORDER BY tablename");
@@ -575,38 +592,57 @@ public class Database {
 				
 				if(!tablename.equals(prevtablename)){
 					if(!prevtablename.equals(""))
-						tabledata += ")";
+						tabledata.append(")");
 					
 					valueRS = dbConn.executeQuery("SELECT * FROM "+tablename+" WHERE entityid = '"+entityid+"'");
 					
 					if(!valueRS.next())
 						continue;
 			
-					tabledata += "("+Utility.encode(tablename)+" "+entityid;
+					tabledata.append("("+Utility.encode(tablename)+" "+entityid);
 				}
 				
-				//get data per attribute	
-				tabledata += " "+Utility.encode(attribute)+":"+Utility.encode(valueRS.getString(attribute))+":"+dbUtil.getColumnType(tablename, attribute);
+				//get data per attribute
+				String value = valueRS.getString(attribute);
 				
-				withoutMetadata += valueRS.getString(attribute);
+				ResultSet foreignKeyRS = getForeignKey(tablename, attribute);
+				
+				if(foreignKeyRS != null){ //attribute is a foreign key
+					String foreigntable = foreignKeyRS.getString("foreigntable");
+					String foreignkey = foreignKeyRS.getString("foreignkey");
+					
+					PreparedStatement foreignEntityPS = dbConn.getConnection().prepareStatement("SELECT entityid FROM "+foreigntable+" WHERE "+foreignkey+" = ?");
+					foreignEntityPS.setString(1, value);
+					ResultSet foreignEntityRS = foreignEntityPS.executeQuery();
+					
+					if(!foreignEntityRS.next())
+						throw new RuntimeException("Unable to retrieve foreign entity");
+					
+					value = foreignEntityRS.getString("entityid");
+				}
+				
+				tabledata.append(" "+Utility.encode(attribute)+":"+Utility.encode(value)+":"+dbUtil.getColumnType(tablename, attribute));
+				
+				withoutMetadata.append(valueRS.getString(attribute));
 				
 				prevtablename = tablename;
 			}
 			
-			if(tabledata == "")
+			if(tabledata.length() == 0)
 				continue;
 			
-			tabledata += ")";
+			tabledata.append(")");
 			
 			VersionVector cuVV = new VersionVector(dbConn);
 			cuVV.loadByCUEntityID(cuentityid);
 
-			String cudata = "("+Utility.encode(cuname)+" "+cuentityid+" "+Utility.encode(cuVV.toString())+" "+tabledata+")";
+			String cudata = "("+Utility.encode(cuname)+" "+cuentityid+" "+Utility.encode(cuVV.toString())+" "+tabledata.toString()+")";
 			updates.add(cudata);
 			
-			withMetadata += cudata;
+			withMetadata.append(cudata);
 		}
 		
+		System.out.println(Utility.now()+" Done getting updates");
 		System.out.println("WITH METADATA:"+withMetadata.length());
 		System.out.println("WITHOUT METADATA:"+withoutMetadata.length());
 		
@@ -636,7 +672,7 @@ public class Database {
 	}
 	
 	private boolean initMetadata() throws SQLException {
-		System.out.println("Creating system tables...");
+		System.out.println(Utility.now()+"Creating system tables...");
 		boolean newSystemTables = assertChangeLogTable();
 		newSystemTables &= assertChangeUnitsTable();
 		newSystemTables &= assertChangeUnitEntitiesTable();
@@ -654,21 +690,21 @@ public class Database {
 		System.out.println("Creating change units per table...");
 		createChangeUnitsPerTable();
 		
-		//TODO:way for users to specify their own filter
-		if(!dbUtil.variableExists(Filter.FILTER_VAR_NAME)){
-			filter.setForCU("cu_objectcache", "objectcache_keyname = 'zerowikidba:messages:en'");
-			filter.saveToDB();
-		}
+//		//TODO:way for users to specify their own filter
+//		if(!dbUtil.variableExists(Filter.FILTER_VAR_NAME)){
+//			filter.setForCU("cu_objectcache", "objectcache_keyname = 'zerowikidba:messages:en'");
+//			filter.saveToDB();
+//		}
 		
 		System.out.println("FILTER!:"+filter);
 		
-		System.out.println("Flushing ChangeLog...");
+		System.out.println(Utility.now()+"Flushing ChangeLog...");
 		flushChangeLogTable();
 		
-		System.out.println("Generating entity metadata...");
+		System.out.println(Utility.now()+"Generating entity metadata...");
 		generateEntityMetadata();
 		
-		System.out.println("Init done!");
+		System.out.println(Utility.now()+"Init done!");
 		return newSystemTables; //specifies if the system tables are new tables
 	}
 

@@ -162,6 +162,7 @@ public class Client implements ConsoleSystem{
 				
 			} catch (IOException e) {
 				displayln("[ask]: Encountered exception: "+e.getLocalizedMessage());
+				e.printStackTrace();
 			}
 		}
 	}
@@ -208,21 +209,21 @@ public class Client implements ConsoleSystem{
 					displayln("[executeCommand:updateRequest]: updates built.");
 					
 					sendMessage("testUpdate", peerName+" Sending test update",sc);
-					if(updates!=null){
-						//TODO:REMOVE
-						PrintStream ps = null;
-						try {
-							ps = new PrintStream(new File("as_encoded_for_send.txt"));
-						} catch (FileNotFoundException e) {
-							e.printStackTrace();
-						}
-						for(String updateEntry:updates){
-							ps.println(Utility.encode(updateEntry));
-							sendMessage("updateEntry",Utility.encode(updateEntry),sc);
-						}
-					} else {
-						
-					}
+//					if(updates!=null){
+//						//TODO:REMOVE
+//						PrintStream ps = null;
+//						try {
+//							ps = new PrintStream(new File("as_encoded_for_send.txt"));
+//						} catch (FileNotFoundException e) {
+//							e.printStackTrace();
+//						}
+//						for(String updateEntry:updates){
+//							ps.println(Utility.encode(updateEntry));
+//							sendMessage("updateEntry",Utility.encode(updateEntry),sc);
+//						}
+//					} else {
+//						
+//					}
 					sendMessage("endUpdate", peerName+" Sending test update",sc);
 				} catch (SQLException e) {
 					displayln("[executeCommand:updateRequest]: SQL Exception "+e.getLocalizedMessage());
@@ -235,27 +236,27 @@ public class Client implements ConsoleSystem{
 			} else if(command.equals("testUpdate")){
 				displayln("[executeCommand.testUpdate] <"+params+"> S:"+sc);
 			} else if(command.equals("updateEntry")){
-				//TODO:REMOVE
-				PrintStream ps = null;
-				try {
-					ps = new PrintStream(new File("as_received.txt"));
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-				ps.println(params);
+//				//TODO:REMOVE
+//				PrintStream ps = null;
+//				try {
+//					ps = new PrintStream(new File("as_received.txt"));
+//				} catch (FileNotFoundException e) {
+//					e.printStackTrace();
+//				}
+//				ps.println(params);
 				String updateString = Utility.decode(params);
-				//TODO:REMOVE
-				try {
-					ps = new PrintStream(new File("as_first_decoded.txt"));
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				}
-				ps.println(updateString);
+//				//TODO:REMOVE
+//				try {
+//					ps = new PrintStream(new File("as_first_decoded.txt"));
+//				} catch (FileNotFoundException e) {
+//					e.printStackTrace();
+//				}
+//				ps.println(updateString);
 				System.out.println(">> ADD "+params +"\n>> "+updateString );
 				updateStringBuffer.add(updateString);
 			}
 			else if(command.equals("endUpdate")){
-				System.out.println("Inserting "+updateStringBuffer.size()+" updates");
+				System.out.println(Utility.now()+" Inserting "+updateStringBuffer.size()+" updates");
 				for(String updateString : updateStringBuffer){
 					try {
 						if(db.compareToLocalCU(updateString) == -2){
@@ -268,7 +269,8 @@ public class Client implements ConsoleSystem{
 						e.printStackTrace();
 					}
 				}
-				System.out.println("Inserting updates");
+				System.out.println(Utility.now()+" Done Inserting updates");
+				
 				updateStringBuffer.clear();
 				
 				db.unsetSyncPartner();

@@ -1,5 +1,6 @@
 package autowing;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 
 import mechanic.DBConnection;
@@ -68,13 +69,13 @@ public class NexusRandomRunner extends NexusRunner {
 		}
 		ind = ind+root;
 		for(int i=0;i<mid;i++){
-			Site targ = sites[ind+i];
+			Site targ = sites[ind];
 			DBConnection dbConn = getDBConn(targ);
 			prelimMid(targ, dbConn);
 		}
 		ind = ind+mid;
 		for(int i=0;i<least; i++){
-			Site targ = sites[ind+i];
+			Site targ = sites[ind];
 			DBConnection dbConn = getDBConn(targ);
 			prelimLeast(targ, dbConn);
 		}
@@ -143,12 +144,20 @@ public class NexusRandomRunner extends NexusRunner {
 	
 	//TODO : insert code
 	private void insert(String command, Site target, DBConnection db){
-				
+		try {
+			db.executeUpdate(command);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
 		
 	//TODO : update code
-	private void update(String comand, Site target, DBConnection db){
-		
+	private void update(String command, Site target, DBConnection db){
+		try {
+			db.executeUpdate(command);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	//TODO : delete code
@@ -156,12 +165,42 @@ public class NexusRandomRunner extends NexusRunner {
 		
 	}
 	
+	private int randInt(int maxVal){
+		return((int)(Math.random()*maxVal));
+	}
+	
 	private String generateInsertCommand(DBConnection dbConn){
-		return "woo random";
+		int randVal1 = randInt(10000);
+		int randVal2 = randInt(10000);
+		
+		String table = null;
+		
+		if(randInt(10) % 2 == 0)
+			table = "A";
+		else
+			table = "B";
+		
+		return("INSERT INTO "+table+" (column"+table+"1, column"+table+"2) VALUES ("+randVal1+", "+randVal2+")");
 	}
 	
 	private String generateUpdateCommand(DBConnection dbConn){
-		return "woo random";
+		int randVal = randInt(10000);
+		
+		String table = null;
+		
+		if(randInt(10) % 2 == 0)
+			table = "A";
+		else
+			table = "B";
+		
+		String column = "column"+table;
+		
+		if(randInt(10) % 2 == 0)
+			column += "1";
+		else
+			column += "2";
+		
+		return("UPDATE "+table+" SET "+column+" = "+randVal+" WHERE "+column+" = (SELECT "+column+" FROM "+table+" ORDER BY "+column+" ASC LIMIT 1)");
 	}
 	
 	private String generateDeleteCommand(DBConnection dbConn){

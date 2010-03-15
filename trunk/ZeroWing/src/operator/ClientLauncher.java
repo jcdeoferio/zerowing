@@ -73,6 +73,7 @@ public class ClientLauncher extends javax.swing.JFrame {
 	}
 
 	private void initComponents2() {
+		setLocationRelativeTo(null);
 		dbTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel(
 				new String[] { "postgresql", "mysql" }));
 	}
@@ -128,12 +129,6 @@ public class ClientLauncher extends javax.swing.JFrame {
 		jLabel6.setFont(new java.awt.Font("Tahoma", 1, 11));
 		jLabel6.setText("Database");
 
-		nodeName.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				nodeNameActionPerformed(evt);
-			}
-		});
-
 		jLabel7.setText("Type");
 
 		dbTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel(
@@ -148,12 +143,6 @@ public class ClientLauncher extends javax.swing.JFrame {
 		jLabel11.setText("User");
 
 		jLabel12.setText("Password");
-
-		dbUser.addActionListener(new java.awt.event.ActionListener() {
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				dbUserActionPerformed(evt);
-			}
-		});
 
 		okButton.setText("OK");
 		okButton.addActionListener(new java.awt.event.ActionListener() {
@@ -493,14 +482,6 @@ public class ClientLauncher extends javax.swing.JFrame {
 		pack();
 	}
 
-	private void dbUserActionPerformed(java.awt.event.ActionEvent evt) {
-		// TODO add your handling code here:
-	}
-
-	private void nodeNameActionPerformed(java.awt.event.ActionEvent evt) {
-		// TODO add your handling code here:
-	}
-
 	private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {
 		c = Client.getClient(nodeName.getText(), trackerIP.getText(), Integer
 				.parseInt(trackerPort.getText()), (String) dbTypeComboBox
@@ -517,7 +498,6 @@ public class ClientLauncher extends javax.swing.JFrame {
 		}
 		c.startClient();
 		saveSettings();
-		setVisible(false);
 		// try {
 		// if (c.db.newSystemTables) {
 		// int ans = JOptionPane
@@ -540,6 +520,7 @@ public class ClientLauncher extends javax.swing.JFrame {
 		// System.out.println("Change Units not created");
 		// e.printStackTrace();
 		// }
+		setVisible(false);
 		new ClientMain(c).setVisible(true);
 	}
 

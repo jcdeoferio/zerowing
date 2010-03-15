@@ -37,6 +37,7 @@ public class ClientMain extends javax.swing.JFrame {
 	}
 
 	private void initComponents2() {
+		setLocationRelativeTo(null);
 		updatePeerListActionPerformed(null);
 	}
 
@@ -341,9 +342,11 @@ public class ClientMain extends javax.swing.JFrame {
 			} else {
 				String a[] = c.db.getTables();
 				if (a.length == 0) {
+					JOptionPane.showMessageDialog(this, "There are no tables in the database.", "ZeroWing", JOptionPane.INFORMATION_MESSAGE);
 					c.db.createChangeUnitsPerTable();
 				} else {
-					new NewChangeUnitForm_TableList(c).setVisible(true);
+					setVisible(false);
+					new NewChangeUnitForm_TableList(c, this).setVisible(true);
 				}
 			}
 		} catch (Exception e) {

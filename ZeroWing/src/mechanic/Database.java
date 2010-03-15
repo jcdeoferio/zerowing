@@ -1,6 +1,5 @@
 package mechanic;
 
-import java.rmi.UnexpectedException;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,8 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.swing.text.StyledEditorKit.ForegroundAction;
 
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
@@ -105,8 +102,15 @@ public class Database {
 		return tableAsserter("cudef_versions", "(cuname varchar(160), peername varchar(160), counter integer)");
 	}
 
+	public static final String zwDataVersionsTable = "data_versions";
 	boolean assertDataVersionsTable() throws SQLException{
-		return tableAsserter("data_versions", "(cuentityid varchar(160), peername varchar(160), counter integer)");
+		return tableAsserter(zwDataVersionsTable, "(cuentityid varchar(160), peername varchar(160), counter integer)");
+	}
+	
+	//TODO: FINISH
+	public static final String zwDeleteLogTable = "zwdeletelog";
+	boolean assertDeleteLogTable() throws SQLException{
+		return tableAsserter(zwDeleteLogTable, "()");
 	}
 	
 	private void assertEntityIDColumns() throws SQLException {
@@ -147,7 +151,12 @@ public class Database {
 	
 	final static String zwForeignKeyTable = "zwforeignkeys";	
 	boolean assertForeignKeyTable() throws SQLException{
-		return tableAsserter(zwForeignKeyTable, "(tablename varchar(160), column varchar(160), foreigntable varchar(160), foreignkey varchar(160))");
+		return tableAsserter(zwForeignKeyTable, "(tablename varchar(160), colname varchar(160), foreigntable varchar(160), foreignkey varchar(160))");
+	}
+	
+	final static String zwGraveyardTable = "zwgraveyard";
+	boolean assertGraveyardTable() throws SQLException{
+		return tableAsserter(zwGraveyardTable, "(entityid varchar(36), peername varchar(160), counter integer)");
 	}
 	
 	void attachInsertTrigger(String tablename) throws SQLException{
@@ -270,7 +279,11 @@ public class Database {
 		if(!dbUtil.tableExists(tablename))
 			throw new IllegalArgumentException("Table "+tablename+" does not exist!");
 
+		String trigBody = "INSERT INTO "+zwGraveyardTable+" (entityid) VALUES (old.entityid)";
 		
+		detachTrigger(TriggerOperation.DELETE, tablename);
+		
+		dbConn.execute(generateTriggerCreationSQL(TriggerOperation.DELETE, tablename, trigBody));
 	}
 	
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
@@ -490,7 +503,22 @@ public class Database {
 	}
 	
 	public String generateTriggerCreationSQL(TriggerOperation op, String tablename, String trigBody){
-		final String opOp = op == TriggerOperation.INSERT?"INSERT":"UPDATE";
+		final String opOp;
+		
+		switch(op){
+		case INSERT:
+			opOp = "INSERT";
+			break;
+		case UPDATE:
+			opOp = "UPDATE";
+			break;
+		case DELETE:
+			opOp = "DELETE";
+			break;
+		default:
+			opOp = "O_O";
+		}
+		
 		final String subprotocol = dbConn.getSubprotocol();
 		
 		final String zwTrigName = getZWTriggerName(op, tablename);
@@ -598,7 +626,7 @@ public class Database {
 		StringBuilder withMetadata = new StringBuilder();//TODO:FOR TESTING
 		StringBuilder withoutMetadata = new StringBuilder();//TODO:FOR TESTING
 		
-		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM data_versions INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter");
+		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM "+zwDataVersionsTable+" INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter");
 			
 		//for each cuentityid with version newer than the one in vv
 		while(cuentityidRS.next()){
@@ -678,6 +706,8 @@ public class Database {
 			opName = "insert";
 		else if(op == TriggerOperation.UPDATE)
 			opName = "update";
+		else if(op == TriggerOperation.DELETE)
+			opName = "delete";
 		
 		return("zwtrig_"+opName+"_"+tablename);
 	}
@@ -689,6 +719,8 @@ public class Database {
 			opName = "insert";
 		else if(op == TriggerOperation.UPDATE)
 			opName = "update";
+		else if(op == TriggerOperation.DELETE)
+			opName = "delete";
 		
 		return("zwtrigproc_"+opName+"_"+tablename);
 	}
@@ -698,6 +730,7 @@ public class Database {
 		boolean newSystemTables = assertChangeLogTable();
 		newSystemTables &= assertChangeUnitsTable();
 		newSystemTables &= assertChangeUnitEntitiesTable();
+		newSystemTables &= assertChangeUnitJoinsTable();
 		newSystemTables &= assertCUDefVersionsTable();
 		newSystemTables &= assertDataVersionsTable();
 		newSystemTables &= assertMappingsTable();
@@ -705,6 +738,8 @@ public class Database {
 		newSystemTables &= assertVariablesTable();
 		newSystemTables &= assertVersionVectorTable();
 		newSystemTables &= assertTempTables();
+		newSystemTables &= assertForeignKeyTable();
+		newSystemTables &= assertGraveyardTable();
 		
 		assertEntityIDColumns();
 		

@@ -559,6 +559,17 @@ public class Database {
 		else
 			return(null);
 	}
+	
+	private String getForeignEntity(String tablename, String column, String key) throws SQLException{
+		PreparedStatement foreignEntityPS = dbConn.getConnection().prepareStatement("SELECT entityid FROM "+tablename+" WHERE "+column+" = ?");
+		foreignEntityPS.setString(1, key);
+		ResultSet foreignEntityRS = foreignEntityPS.executeQuery();
+		
+		if(foreignEntityRS.next())
+			return(foreignEntityRS.getString("entityid"));
+		else
+			return(null);
+	}
  
 	public List<String> getUpdates(Filter filter, VersionVector vv) throws SQLException {
 		flushChangeLogTable();
@@ -611,14 +622,7 @@ public class Database {
 					String foreigntable = foreignKeyRS.getString("foreigntable");
 					String foreignkey = foreignKeyRS.getString("foreignkey");
 					
-					PreparedStatement foreignEntityPS = dbConn.getConnection().prepareStatement("SELECT entityid FROM "+foreigntable+" WHERE "+foreignkey+" = ?");
-					foreignEntityPS.setString(1, value);
-					ResultSet foreignEntityRS = foreignEntityPS.executeQuery();
-					
-					if(!foreignEntityRS.next())
-						throw new RuntimeException("Unable to retrieve foreign entity");
-					
-					value = foreignEntityRS.getString("entityid");
+					value = getForeignEntity(foreigntable, foreignkey, value);
 				}
 				
 				tabledata.append(" "+Utility.encode(attribute)+":"+Utility.encode(value)+":"+dbUtil.getColumnType(tablename, attribute));
@@ -738,6 +742,15 @@ public class Database {
 				String attribute = Utility.decode(valMsg[0]);
 				String value = Utility.decode(valMsg[1]);
 				int type = Integer.parseInt(valMsg[2]);
+				
+				ResultSet foreignKeyRS = getForeignKey(tablename, attribute);
+				
+				if(foreignKeyRS != null){
+					String foreigntable = foreignKeyRS.getString("foreigntable");
+					String foreignkey = foreignKeyRS.getString("foreignkey");
+
+					value = getForeignEntity(foreigntable, foreignkey, value);
+				}
 				
 				attributes.add(attribute);
 				values.put(attribute, value);

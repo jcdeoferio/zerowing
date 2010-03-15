@@ -46,14 +46,14 @@ public class Nexus {
 //		Nexus one = getNexus("testdata.txt");
 		Nexus one = getRandomNexus(
 				1,
-				"postgresql",
+				"mysql",
 				"cimbitest",
-				8870,
-				3, //:TODO change number of peers
+				3306,
+				10, //:TODO change number of peers
 				1000,
 				600,
 				1000,
-				100
+				0
 		);
 	}
 	
@@ -79,7 +79,7 @@ public class Nexus {
 			int updates, int deletes){
 		sites = new Site[peers];
 		conns = new HashMap<String, AddressPort>();
-		String dbUser = "postgres";
+		String dbUser = "root";
 		String dbPassword = "password";
 		for (int i=0;i<peers; i++){
 			String peerName = "peer"+i;

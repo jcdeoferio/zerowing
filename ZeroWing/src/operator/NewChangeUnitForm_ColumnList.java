@@ -41,10 +41,12 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 	private Client c;
 	private String[] tableNames;
 	private LinkedList<ChangeUnit> changeUnits;
+	private NewChangeUnitForm_TableList tableList;
 
-	public NewChangeUnitForm_ColumnList(Object[] tablenames, Client c)
+	public NewChangeUnitForm_ColumnList(Object[] tablenames, Client c, NewChangeUnitForm_TableList newChangeUnitFormTableList)
 			throws SQLException {
-		tableNames = new String[tablenames.length]; 
+		tableNames = new String[tablenames.length];
+		tableList = newChangeUnitFormTableList;
 		for(int i=0;i<tablenames.length;i++){
 			tableNames[i] = tablenames[i].toString();
 		}
@@ -54,6 +56,7 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 	}
 
 	private void initComponents2() throws SQLException {
+		setLocationRelativeTo(null);
 		// selectedList.setModel(new javax.swing.AbstractListModel() {
 		// String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5"
 		// };
@@ -353,6 +356,7 @@ public class NewChangeUnitForm_ColumnList extends javax.swing.JFrame {
 				e.printStackTrace();
 			}
 		setVisible(false);
+		tableList.setVisible(true);
 	}
 
 	private void deleteChangeUnitActionPerformed(java.awt.event.ActionEvent evt) {

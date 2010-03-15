@@ -22,21 +22,24 @@ import client.Client;
  * @author jc.deoferio
  */
 public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
-	private Client c;
+	private Client client;
+	private ClientMain clientMain;
     /** Creates new form NewChangeUnitForm_TableList */
     public NewChangeUnitForm_TableList() {
         initComponents();
     }
 
-    public NewChangeUnitForm_TableList(Client c) throws SQLException {
-    	this.c = c;
+    public NewChangeUnitForm_TableList(Client client, ClientMain clientMain) throws SQLException {
+    	this.client = client;
+    	this.clientMain = clientMain;
 		initComponents();
 		initComponents2();
 	}
 
 	private void initComponents2() throws SQLException {
+		setLocationRelativeTo(null);
 		tableList.setModel(new javax.swing.AbstractListModel() {
-            String[] strings = c.db.getTables();
+            String[] strings = client.db.getTables();
             public int getSize() { return strings.length; }
             public Object getElementAt(int i) { return strings[i]; }
         });
@@ -119,7 +122,8 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
 
     private void addChangeUnitsButtonActionPerformed(java.awt.event.ActionEvent evt) {
     	try {
-			new NewChangeUnitForm_ColumnList(tableList.getSelectedValues(), c).setVisible(true);
+			new NewChangeUnitForm_ColumnList(tableList.getSelectedValues(), client, this).setVisible(true);
+			setVisible(false);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -127,6 +131,7 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
 
     private void doneButtonActionPerformed(java.awt.event.ActionEvent evt) {
         setVisible(false);
+        clientMain.setVisible(true);
     }
 
     /**

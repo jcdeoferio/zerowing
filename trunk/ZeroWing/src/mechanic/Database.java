@@ -24,7 +24,7 @@ import util.Utility;
 
 public class Database {
 	private enum TriggerOperation{
-		INSERT, UPDATE
+		INSERT, UPDATE, DELETE
 	}
 	
 	static final String zwTempEntityIDTable = "zwtrigproc_entityid";
@@ -264,6 +264,13 @@ public class Database {
 		detachTrigger(TriggerOperation.UPDATE, tablename);
 		
 		dbConn.execute(generateTriggerCreationSQL(TriggerOperation.UPDATE, tablename, trigBody));
+	}
+	
+	void attachDeleteTrigger(String tablename) throws SQLException{
+		if(!dbUtil.tableExists(tablename))
+			throw new IllegalArgumentException("Table "+tablename+" does not exist!");
+
+		
 	}
 	
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
@@ -570,6 +577,17 @@ public class Database {
 		else
 			return(null);
 	}
+	
+	private String getLocalKey(String tablename, String column, String entityid) throws SQLException{
+		PreparedStatement localKeyPS = dbConn.getConnection().prepareStatement("SELECT "+column+" FROM "+tablename+" WHERE entityid = ?");
+		localKeyPS.setString(1, entityid);
+		ResultSet localKeyRS = localKeyPS.executeQuery();
+		
+		if(localKeyRS.next())
+			return(localKeyRS.getString(column));
+		else
+			return(null);
+	}
  
 	public List<String> getUpdates(Filter filter, VersionVector vv) throws SQLException {
 		flushChangeLogTable();
@@ -749,7 +767,7 @@ public class Database {
 					String foreigntable = foreignKeyRS.getString("foreigntable");
 					String foreignkey = foreignKeyRS.getString("foreignkey");
 
-					value = getForeignEntity(foreigntable, foreignkey, value);
+					value = getLocalKey(foreigntable, foreignkey, value);
 				}
 				
 				attributes.add(attribute);

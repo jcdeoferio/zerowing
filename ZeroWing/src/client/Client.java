@@ -23,6 +23,7 @@ import util.Utility;
 
 public class Client implements ConsoleSystem{
 	HashMap<SimpleConnection, SyncUpdateListener> waitingUpdates;
+	HashMap<SimpleConnection, String> sources;
 	
 	public Database db;
 	String peerName;
@@ -37,6 +38,7 @@ public class Client implements ConsoleSystem{
 	ConsoleController cc;
 	int peerPort = 8889;
 	private List<String> updateStringBuffer;
+	
 	
 	PeerServer peerService;
 	
@@ -62,6 +64,7 @@ public class Client implements ConsoleSystem{
 		this.updateStringBuffer = new LinkedList<String>();
 		
 		waitingUpdates = new HashMap<SimpleConnection, SyncUpdateListener>();
+		sources = new HashMap<SimpleConnection, String>();
 		setDB(dbType, ip, dbPort, dbName, dbUser, dbPassword);
 		cc.startConsole(this);
 	}
@@ -232,7 +235,9 @@ public class Client implements ConsoleSystem{
 				}
 			} else if(command.equals("syncPartner")){
 				String syncPartner= Utility.decode(params);
+				sources.put(sc, syncPartner);
 				db.setSyncPartner(syncPartner);
+				
 			} else if(command.equals("testUpdate")){
 				displayln("[executeCommand.testUpdate] <"+params+"> S:"+sc);
 			} else if(command.equals("updateEntry")){
@@ -256,14 +261,16 @@ public class Client implements ConsoleSystem{
 				updateStringBuffer.add(updateString);
 			}
 			else if(command.equals("endUpdate")){
-				System.out.println(Utility.now()+" Inserting "+updateStringBuffer.size()+" updates");
+				String pardner = sources.get(sc);
+				System.out.println(Utility.now()+" Inserting "+updateStringBuffer.size()+" updates on partner "+pardner);
+				
 				for(String updateString : updateStringBuffer){
 					try {
 						if(db.compareToLocalCU(updateString) == -2){
 							System.out.println("Conflicting update! Defaulting to accept");
 						}
 						
-						db.insertUpdate(updateString);
+						db.insertUpdate(updateString, pardner);
 					} catch (SQLException e) {
 						displayln("[executeCommand:updateRequest]: SQL Exception "+e.getLocalizedMessage());
 						e.printStackTrace();
@@ -274,6 +281,14 @@ public class Client implements ConsoleSystem{
 				updateStringBuffer.clear();
 				
 				db.unsetSyncPartner();
+				
+				try {
+					sc.disconnect();
+					displayln("Successful Disconnect: "+sc);
+				} catch (IOException e) {
+					displayln("Disconnect ERROR" + sc);
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -309,10 +324,10 @@ public class Client implements ConsoleSystem{
 	 * 
 	 * @param msg
 	 */
-	public void includeUpdate(String msg) {
+	private void includeUpdate(String msg) {
 		try {
 			displayln("Got update: " + msg);
-			db.insertUpdate(msg);
+			db.insertUpdate(msg, null);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -473,7 +488,8 @@ public class Client implements ConsoleSystem{
 				if (data.length > 1) {
 					if (data[0].equals("SQL")) {
 						action = action.substring(data[0].length() + 1);
-						db.insertUpdate(action);
+						db.insertUpdate(action, peerName);
+						displayln("WARNING: using "+peerName+" as syncPartner. Might result in magic.");
 					} else if (data[0].equals("SQLSELECT")) {
 						action = action.substring(data[0].length() + 1);
 						for (String s : db.queryToStringList(action)) {

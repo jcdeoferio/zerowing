@@ -766,7 +766,7 @@ public class Database {
 	}
 
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
-	public void insertUpdate(String updateString) throws SQLException {
+	public void insertUpdate(String updateString, String syncPartner) throws SQLException {
 		if(syncPartner == null)
 			throw new IllegalStateException("No sync partner set");
 		

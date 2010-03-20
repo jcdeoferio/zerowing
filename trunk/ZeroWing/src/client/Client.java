@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -51,6 +52,8 @@ public class Client implements ConsoleSystem{
 	private boolean trackerLive;
 	TrackerListener trackerListener;
 	
+	private PrintStream logger;
+	
 	private Client(String peerName, String trackerAddress, int port,
 			String dbType, String ip, int dbPort, String dbName, String dbUser,
 			String dbPassword) throws SQLException{
@@ -61,7 +64,13 @@ public class Client implements ConsoleSystem{
 		this.trackerAddress = trackerAddress;
 		this.trackerPort = port;
 		this.ip = ip;
-		this.updateStringBuffer = new LinkedList<String>();
+		this.updateStringBuffer = Collections.synchronizedList(new LinkedList<String>());
+		
+		try {
+			this.logger = new PrintStream("synclog-"+peerName+".txt");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
 		
 		waitingUpdates = new HashMap<SimpleConnection, SyncUpdateListener>();
 		sources = new HashMap<SimpleConnection, String>();
@@ -220,10 +229,10 @@ public class Client implements ConsoleSystem{
 //						} catch (FileNotFoundException e) {
 //							e.printStackTrace();
 //						}
-//						for(String updateEntry:updates){
+						for(String updateEntry:updates){
 //							ps.println(Utility.encode(updateEntry));
-//							sendMessage("updateEntry",Utility.encode(updateEntry),sc);
-//						}
+							sendMessage("updateEntry",Utility.encode(updateEntry),sc);
+						}
 //					} else {
 //						
 //					}
@@ -258,27 +267,35 @@ public class Client implements ConsoleSystem{
 //				}
 //				ps.println(updateString);
 				System.out.println(">> ADD "+params +"\n>> "+updateString );
-				updateStringBuffer.add(updateString);
+				synchronized (updateStringBuffer) {
+					updateStringBuffer.add(updateString);
+				}
 			}
 			else if(command.equals("endUpdate")){
 				String pardner = sources.get(sc);
-				System.out.println(Utility.now()+" Inserting "+updateStringBuffer.size()+" updates on partner "+pardner);
+				int updateCount = updateStringBuffer.size();
+				System.out.println(Utility.now()+" Inserting "+updateCount+" updates on partner "+pardner);
 				
-				for(String updateString : updateStringBuffer){
-					try {
-						if(db.compareToLocalCU(updateString) == -2){
-							System.out.println("Conflicting update! Defaulting to accept");
+				synchronized (updateStringBuffer) {
+					for(String updateString : updateStringBuffer){
+						try {
+							if(db.compareToLocalCU(updateString) == -2){
+								System.out.println("Conflicting update! Defaulting to accept");
+							}
+							
+							db.insertUpdate(updateString, pardner);
+						} catch (SQLException e) {
+							displayln("[executeCommand:updateRequest]: SQL Exception "+e.getLocalizedMessage());
+							e.printStackTrace();
 						}
-						
-						db.insertUpdate(updateString, pardner);
-					} catch (SQLException e) {
-						displayln("[executeCommand:updateRequest]: SQL Exception "+e.getLocalizedMessage());
-						e.printStackTrace();
 					}
+					
+					updateStringBuffer.clear();
 				}
+				
 				System.out.println(Utility.now()+" Done Inserting updates");
 				
-				updateStringBuffer.clear();
+				logger.println(Utility.now()+": "+updateCount+" "+pardner+" --> "+peerName);
 				
 				db.unsetSyncPartner();
 				

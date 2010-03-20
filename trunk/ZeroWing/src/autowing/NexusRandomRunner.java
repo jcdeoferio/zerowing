@@ -2,6 +2,7 @@ package autowing;
 
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Random;
 
 import mechanic.DBConnection;
 
@@ -41,17 +42,17 @@ public class NexusRandomRunner extends NexusRunner {
 	public void run() {
 		log("NexusRandomRunner started");
 		
-		prelimInserts();
+//		prelimInserts();
 		
 		insertRun(inserts);
 		syncRun(syncs);
-		
-		updateRun(updates);
-		syncRun(syncs);
-		
-		deleteRun(deletes);
-		syncRun(syncs);
-		
+//		
+//		updateRun(updates);
+//		syncRun(syncs);
+//		
+//		deleteRun(deletes);
+//		syncRun(syncs);
+//		
 		log("NexusRandomRunner ended");
 	}
 	
@@ -94,15 +95,16 @@ public class NexusRandomRunner extends NexusRunner {
 	}
 
 	private void syncRun(int syncs){
-		for(int i=syncs; i>-1 ; i--){
-			Site a = getRandomSite();
-			Site b = getRandomSite();
-			twoWaySync(a,b);
+		for(int i=syncs; i>0 ; i--){
+//			Site a = getRandomSite();
+//			Site b = getRandomSite();
+			Site[] ss = get2RandomSites();
+			twoWaySync(ss[0],ss[1]);
 		}
 	}
 	
 	private void insertRun(int inserts){
-		for(int i=inserts; i>-1; i--){
+		for(int i=inserts; i>0; i--){
 			Site targ = getRandomSite();
 			DBConnection dbConn = getDBConn(targ);
 			String command = generateInsertCommand(dbConn);
@@ -111,7 +113,7 @@ public class NexusRandomRunner extends NexusRunner {
 		}
 	}
 	private void updateRun(int updates){
-		for(int i=updates; i>-1 ; i--){
+		for(int i=updates; i>0 ; i--){
 			Site targ = getRandomSite();
 			DBConnection dbConn = getDBConn(targ);
 			String command = generateUpdateCommand(dbConn);
@@ -121,7 +123,7 @@ public class NexusRandomRunner extends NexusRunner {
 	}
 	
 	private void deleteRun(int deletes){
-		for(int i=deletes; i>-1 ; i--){
+		for(int i=deletes; i>0 ; i--){
 			Site targ = getRandomSite();
 			DBConnection dbConn = getDBConn(targ);
 			String command = generateDeleteCommand(dbConn);
@@ -209,9 +211,25 @@ public class NexusRandomRunner extends NexusRunner {
 	
 	
 	private Site getRandomSite(){
-		int i = (int) (Math.random()*siteSize);
+//		int i = (int) (Math.random()*siteSize);
+		Random r = new Random();
+		int i = r.nextInt(siteSize);
+		
+		
 		return sites[i];
 	}
+	private Site[] get2RandomSites(){
+		Random r = new Random();
+		
+		int i,j;
+		i = j = 0;
+		while(i==j){
+			i= r.nextInt(siteSize);
+			j = r.nextInt(siteSize);
+		}
+		return new Site[] {sites[i], sites[j]};
+	}
+	
 	private DBConnection getDBConn(Site s){
 		DBConnection db = s.as.c.getDatabase().getDBConnection();
 		return db;

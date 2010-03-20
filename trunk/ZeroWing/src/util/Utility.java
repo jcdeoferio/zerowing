@@ -3,9 +3,11 @@ package util;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -159,12 +161,31 @@ public class Utility {
 		return(separatorSeparate(outerList, sep2));
 	}
 	
+	static final String DateFormat = "yyyy/MM/dd HH:mm:ss";
+	
 	public static String now(){
-		final String DateFormat = "yyyy/MM/dd HH:mm:ss";
-		
 		Calendar cal = Calendar.getInstance();
 		SimpleDateFormat sdf = new SimpleDateFormat(DateFormat);
 		return(sdf.format(cal.getTime()));
 	}
 	
+	public static Date parseDateStr(String str){
+		SimpleDateFormat sdf = new SimpleDateFormat(DateFormat);
+		
+		try {
+			
+			return(sdf.parse(str));
+			
+		} catch (ParseException e) {
+			
+			e.printStackTrace();
+			return(null);
+			
+		}
+	}
+	
+	public static String timestamp(){
+		final String timestampFormat = "yyyy-MM-dd-HH-mm-ss";
+		return(new SimpleDateFormat(timestampFormat).format(Calendar.getInstance().getTime()));
+	}
 } 

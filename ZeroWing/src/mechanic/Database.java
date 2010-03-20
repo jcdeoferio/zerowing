@@ -583,7 +583,7 @@ public class Database {
 	}
 	
 	private ResultSet getForeignKey(String tablename, String column) throws SQLException{
-		final PreparedStatement foreignKeyPS = dbConn.getConnection().prepareStatement("SELECT foreigntable, foreignkey FROM "+zwForeignKeyTable+" WHERE tablename = ? AND column = ?");
+		final PreparedStatement foreignKeyPS = dbConn.getConnection().prepareStatement("SELECT foreigntable, foreignkey FROM "+zwForeignKeyTable+" WHERE tablename = ? AND colname = ?");
 		foreignKeyPS.setString(1, tablename);
 		foreignKeyPS.setString(2, column);
 		

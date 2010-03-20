@@ -50,9 +50,9 @@ public class Nexus {
 				"cimbitest",
 				3306,
 				10, //:TODO change number of peers
-				1000,
-				600,
-				1000,
+				100,
+				200,
+				400,
 				0
 		);
 	}

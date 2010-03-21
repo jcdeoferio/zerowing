@@ -11,6 +11,7 @@ public class NexusValidator {
 			System.out.println("CONNECT "+peerName+";");
 			System.out.println("SELECT count(*) FROM A;");
 			System.out.println("SELECT count(*) FROM B;");
+			System.out.println("SELECT * FROM versionvector order by maxcounter, peername;");
 		}
 	}
 

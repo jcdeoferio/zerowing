@@ -266,7 +266,7 @@ public class Client implements ConsoleSystem{
 //					e.printStackTrace();
 //				}
 //				ps.println(updateString);
-				System.out.println(">> ADD "+params +"\n>> "+updateString );
+//				System.out.println(">> ADD "+params +"\n>> "+updateString );
 				synchronized (updateStringBuffer) {
 					updateStringBuffer.add(updateString);
 				}

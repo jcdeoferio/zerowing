@@ -1,25 +1,27 @@
 package test;
 
-import mechanic.VersionVector;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Tester {
 
+	static Scanner sc = new Scanner(System.in);
+	
 	public static void main(String[] args) {
-		VersionVector vv = new VersionVector("");
-		VersionVector vv2 = new VersionVector("A:1 B:2 C:3");
-		VersionVector vv3 = new VersionVector("A:3 D:1 C:2");
-		
-		System.out.println(vv);
-		System.out.println(vv2);
-		System.out.println(vv3);
-		
-		vv.addVersionVector(vv2);
-		
-		System.out.println(vv);
-		
-		vv.addVersionVector(vv3);
-		
-		System.out.println(vv);
+		final Pattern pat = Pattern.compile(".*updates.*");
+		for(int i = 0; sc.hasNextLine(); i++){
+			String line = sc.nextLine();
+			
+			Matcher mat = pat.matcher(line);
+			
+			if(!mat.matches()){
+				i--;
+				continue;
+			}
+			
+			System.out.println("cp "+line+"/synclog-summary.txt synclog-summary-"+i+".txt");			
+		}
 	}
 
 }

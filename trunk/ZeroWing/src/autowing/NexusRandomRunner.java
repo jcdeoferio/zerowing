@@ -45,13 +45,13 @@ public class NexusRandomRunner extends NexusRunner {
 	public void run() {
 		log("NexusRandomRunner started");
 		
-//		prelimInserts();
+		prelimInserts();
 		
 		insertRun(inserts);
 		syncRun(syncs);
 		
-		updateRun(updates);
-		syncRun(syncs);
+//		updateRun(updates);
+//		syncRun(syncs);
 //		
 //		deleteRun(deletes);
 //		syncRun(syncs);
@@ -61,8 +61,8 @@ public class NexusRandomRunner extends NexusRunner {
 	
 	private void prelimInserts(){
 		int root = 1;
-		int mid = 3;
-		int least = 6;
+		int mid = 1;
+		int least = 2;
 		
 		int ind = 0;
 		
@@ -73,13 +73,13 @@ public class NexusRandomRunner extends NexusRunner {
 		}
 		ind = ind+root;
 		for(int i=0;i<mid;i++){
-			Site targ = sites[ind];
+			Site targ = sites[ind+i];
 			DBConnection dbConn = getDBConn(targ);
 			prelimMid(targ, dbConn);
 		}
 		ind = ind+mid;
 		for(int i=0;i<least; i++){
-			Site targ = sites[ind];
+			Site targ = sites[ind+i];
 			DBConnection dbConn = getDBConn(targ);
 			prelimLeast(targ, dbConn);
 		}
@@ -91,10 +91,10 @@ public class NexusRandomRunner extends NexusRunner {
 		
 	}
 	private void prelimMid(Site targ, DBConnection dbConn){
-		setMaxValue(targ.getDatabase(), 700);
+		setMaxValue(targ.getDatabase(), 7000);
 	}
 	private void prelimLeast(Site targ, DBConnection dbConn){
-		setMaxValue(targ.getDatabase(), 400);
+		setMaxValue(targ.getDatabase(), 4000);
 	}
 	
 	private void setMaxValue(Database db, int maxVal){
@@ -103,7 +103,7 @@ public class NexusRandomRunner extends NexusRunner {
 			
 			String filterStr = "";
 			for(String colNum : new String[]{"1", "2"}){
-				String column = "column"+table+colNum;
+				String column = table+"_column"+table+colNum;
 
 				filterStr += column+" < "+maxVal+" AND ";
 			}
@@ -124,6 +124,7 @@ public class NexusRandomRunner extends NexusRunner {
 //			Site b = getRandomSite();
 			Site[] ss = get2RandomSites();
 			twoWaySync(ss[0],ss[1]);
+			System.out.println("SYNC#"+i);
 		}
 	}
 	

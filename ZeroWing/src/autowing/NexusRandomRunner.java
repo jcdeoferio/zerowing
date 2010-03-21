@@ -2,9 +2,12 @@ package autowing;
 
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 
 import mechanic.DBConnection;
+import mechanic.Database;
 
 import autosynccommands.AutoSyncAddPeer;
 import autosynccommands.AutoSyncSync;
@@ -46,9 +49,9 @@ public class NexusRandomRunner extends NexusRunner {
 		
 		insertRun(inserts);
 		syncRun(syncs);
-//		
-//		updateRun(updates);
-//		syncRun(syncs);
+		
+		updateRun(updates);
+		syncRun(syncs);
 //		
 //		deleteRun(deletes);
 //		syncRun(syncs);
@@ -88,10 +91,31 @@ public class NexusRandomRunner extends NexusRunner {
 		
 	}
 	private void prelimMid(Site targ, DBConnection dbConn){
-		
+		setMaxValue(targ.getDatabase(), 700);
 	}
 	private void prelimLeast(Site targ, DBConnection dbConn){
-		
+		setMaxValue(targ.getDatabase(), 400);
+	}
+	
+	private void setMaxValue(Database db, int maxVal){
+		for(String table : new String[]{"A", "B"}){
+			String cuname = "cu_"+table;
+			
+			String filterStr = "";
+			for(String colNum : new String[]{"1", "2"}){
+				String column = "column"+table+colNum;
+
+				filterStr += column+" < "+maxVal+" AND ";
+			}
+			
+			filterStr = filterStr.substring(0, filterStr.length()-5); //5 length of dangling ' AND ';
+			
+			try {
+				db.setFilterForCU(cuname, filterStr);
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	private void syncRun(int syncs){
@@ -116,9 +140,9 @@ public class NexusRandomRunner extends NexusRunner {
 		for(int i=updates; i>0 ; i--){
 			Site targ = getRandomSite();
 			DBConnection dbConn = getDBConn(targ);
-			String command = generateUpdateCommand(dbConn);
+			List<String> commands = generateUpdateCommand(dbConn);
 			
-			update(command, targ, dbConn);
+			update(commands, targ, dbConn);
 		}
 	}
 	
@@ -154,9 +178,10 @@ public class NexusRandomRunner extends NexusRunner {
 	}
 		
 	//TODO : update code
-	private void update(String command, Site target, DBConnection db){
+	private void update(List<String> commands, Site target, DBConnection db){
 		try {
-			db.executeUpdate(command);
+			for(String command : commands)
+				db.executeUpdate(command);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -185,7 +210,7 @@ public class NexusRandomRunner extends NexusRunner {
 		return("INSERT INTO "+table+" (column"+table+"1, column"+table+"2) VALUES ("+randVal1+", "+randVal2+")");
 	}
 	
-	private String generateUpdateCommand(DBConnection dbConn){
+	private List<String> generateUpdateCommand(DBConnection dbConn){
 		int randVal = randInt(10000);
 		
 		String table = null;
@@ -202,7 +227,18 @@ public class NexusRandomRunner extends NexusRunner {
 		else
 			column += "2";
 		
-		return("UPDATE "+table+" SET "+column+" = "+randVal+" WHERE "+column+" = (SELECT "+column+" FROM "+table+" ORDER BY "+column+" ASC LIMIT 1)");
+		final String createTempTable = "CREATE TEMPORARY TABLE temp (col integer);";
+		final String populateTempTable = "INSERT INTO temp (col) VALUES ((SELECT "+column+" FROM "+table+" ORDER BY "+column+" LIMIT 1));";
+		final String updateStmt = "UPDATE "+table+" SET "+column+" = "+randVal+" WHERE "+column+" = (SELECT col FROM temp ORDER BY col LIMIT 1);";
+		final String dropTempTable = "DROP TABLE temp;";
+		
+		List<String> statements = new LinkedList<String>();
+		statements.add(createTempTable);
+		statements.add(populateTempTable);
+		statements.add(updateStmt);
+		statements.add(dropTempTable);
+		
+		return(statements);
 	}
 	
 	private String generateDeleteCommand(DBConnection dbConn){

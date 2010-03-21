@@ -2,13 +2,17 @@ package autowing;
 
 import java.util.LinkedList;
 
+import mechanic.Database;
+
 import client.Client;
 
 public class Site{
+	Client c;
 	AutoSync as;
 	AutoGen ag;
 	String commandString;
 	private Site(Client c){
+		this.c = c;
 		as = AutoSync.getAutoSync(c);
 		ag = AutoGen.getAutoGen(c);
 	}
@@ -38,6 +42,10 @@ public class Site{
 	
 	public String getCommands(){
 		return commandString;
+	}
+	
+	public Database getDatabase(){
+		return(c.getDatabase());
 	}
 
 	

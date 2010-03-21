@@ -1005,4 +1005,9 @@ public class Database {
 	public void unsetSyncPartner(){
 		this.syncPartner = null;
 	}
+	
+	public void setFilterForCU(String cuname, String filterStr) throws SQLException{
+		filter.setForCU(cuname, filterStr);
+		filter.saveToDB();
+	}
 }

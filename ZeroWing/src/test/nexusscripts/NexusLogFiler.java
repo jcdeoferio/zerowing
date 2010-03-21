@@ -5,7 +5,7 @@ import util.Utility;
 public class NexusLogFiler {
 
 	public static void main(String[] args) {
-		final int nPeers = 10;
+		final int nPeers = 4;
 		
 		final String foldername = "synclog-"+Utility.timestamp();
 		

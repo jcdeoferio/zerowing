@@ -436,7 +436,7 @@ public class Client implements ConsoleSystem{
 	// ======================================       // TRACKER RELATED
 	
 	public void display(String s) {
-		System.out.print(s);
+//		System.out.print(s);
 	}
 
 	public void displayln(String s) {
@@ -522,5 +522,6 @@ public class Client implements ConsoleSystem{
 	}
 	public void printMessage(String msg) {
 		displayln(msg);
+	
 	}
 }	

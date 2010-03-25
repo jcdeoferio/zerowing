@@ -640,7 +640,7 @@ public class Database {
 			
 			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute FROM changeunitentities cue WHERE cuentityid = ? AND EXISTS(SELECT cuentityid FROM "+cuname+" WHERE cuentityid = cue.cuentityid AND "+filter.getForCU(cuname)+") ORDER BY tablename");
 			dataPS.setString(1, cuentityid);
-//			System.out.println("STATEMENT:"+dataPS);
+			System.out.println("STATEMENT:"+dataPS);
 			ResultSet dataRS = dataPS.executeQuery();
 			while(dataRS.next()){
 				String entityid = dataRS.getString("entityid");

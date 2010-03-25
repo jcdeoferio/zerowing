@@ -45,7 +45,7 @@ public class Nexus {
 		@SuppressWarnings("unused")
 //		Nexus one = getNexus("testdata.txt");
 		Nexus one = getRandomNexus(
-				1,
+				0,
 				"mysql",
 				"cimbitest",
 				3306,

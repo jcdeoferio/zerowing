@@ -1,0 +1,2 @@
+Total number of entities sent: 0
+Number of nonzero syncs: 0

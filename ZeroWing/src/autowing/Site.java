@@ -8,7 +8,7 @@ import client.Client;
 
 public class Site{
 	Client c;
-	AutoSync as;
+	public AutoSync as;
 	AutoGen ag;
 	String commandString;
 	private Site(Client c){

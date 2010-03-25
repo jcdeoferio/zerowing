@@ -39,7 +39,15 @@ public class TrackerListener extends Thread {
 	public AddressPort parse(String msg) {
 		String[] data = msg.split(" ");
 		String candidateName = data[0];
-		String address = data[1];
+		String address;
+		if(data.length!=2){
+			c.displayln("Tracker message is fail: "+msg+ " ::"+c.tracker);
+			System.out.println("Tracker message is fail: ["+msg+ "] :: ["+c.tracker+"]");
+			
+			return null;
+		}
+		
+		address = data[1];
 		if(data.length==2){
 			if( (data[0].equals("/login")) ){
 				if(data[1].equals("success")){

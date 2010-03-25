@@ -11,6 +11,7 @@ public class DBConnection{
 	private Connection db_conn;
 	private String UUIDFun;
 	private String subprotocol;
+	private String database;
 	
 	private DBConnection(String driver, String subprotocol, String host, int port, String database,
 			String user, String password) throws SQLException{
@@ -24,6 +25,7 @@ public class DBConnection{
 			throw new IllegalArgumentException("Unsupported database " + subprotocol);
 		
 		this.subprotocol = subprotocol;
+		this.database = database;
 
 		try {  
 			Class.forName(driver);  
@@ -80,6 +82,10 @@ public class DBConnection{
 	
 	public String getSubprotocol() {
 		return(subprotocol);
+	}
+	
+	public String getDBName(){
+		return(database);
 	}
 
 	public String getUUIDFun(){

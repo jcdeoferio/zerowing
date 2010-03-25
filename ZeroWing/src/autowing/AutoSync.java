@@ -15,7 +15,7 @@ import operator.ClientInterface;
  *
  */
 public class AutoSync implements ClientInterface{
-	Client c;
+	public Client c;
 	int currentTime;
 	LinkedList<AutoSyncCommand> commands;
 	private AutoSync(Client c){

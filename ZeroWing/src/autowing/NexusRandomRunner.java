@@ -6,6 +6,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
+import util.DBUtility;
+
 import mechanic.DBConnection;
 import mechanic.Database;
 
@@ -45,18 +47,32 @@ public class NexusRandomRunner extends NexusRunner {
 	public void run() {
 		log("NexusRandomRunner started");
 		
-		prelimInserts();
+		if(inserts > 0){
+			prelimInserts();
+			
+			insertRun(inserts);
+			syncRun(syncs);
+		}
 		
-		insertRun(inserts);
-		syncRun(syncs);
+		if(updates > 0){
+			updateRun(updates);
+			syncRun(syncs);
+		}
 		
-//		updateRun(updates);
-//		syncRun(syncs);
-//		
-//		deleteRun(deletes);
-//		syncRun(syncs);
-//		
+		if(deletes > 0){
+			deleteRun(deletes);
+			syncRun(syncs);
+		}
+		
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
 		log("NexusRandomRunner ended");
+		
+		
 	}
 	
 	private void prelimInserts(){
@@ -194,7 +210,8 @@ public class NexusRandomRunner extends NexusRunner {
 	}
 	
 	private int randInt(int maxVal){
-		return((int)(Math.random()*maxVal));
+		Random rand = new Random();
+		return(rand.nextInt(maxVal));
 	}
 	
 	private String generateInsertCommand(DBConnection dbConn){
@@ -212,6 +229,8 @@ public class NexusRandomRunner extends NexusRunner {
 	}
 	
 	private List<String> generateUpdateCommand(DBConnection dbConn){
+		DBUtility dbUtil = new DBUtility(dbConn);
+		
 		int randVal = randInt(10000);
 		
 		String table = null;
@@ -228,8 +247,17 @@ public class NexusRandomRunner extends NexusRunner {
 		else
 			column += "2";
 		
+		int rowCount = -1;
+		try {
+			rowCount = dbUtil.selectCount("FROM "+table);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+		int randOffset = randInt(rowCount);
+		
 		final String createTempTable = "CREATE TEMPORARY TABLE temp (col integer);";
-		final String populateTempTable = "INSERT INTO temp (col) VALUES ((SELECT "+column+" FROM "+table+" ORDER BY "+column+" LIMIT 1));";
+		final String populateTempTable = "INSERT INTO temp (col) VALUES ((SELECT "+column+" FROM "+table+" LIMIT 1 OFFSET "+randOffset+"));";
 		final String updateStmt = "UPDATE "+table+" SET "+column+" = "+randVal+" WHERE "+column+" = (SELECT col FROM temp ORDER BY col LIMIT 1);";
 		final String dropTempTable = "DROP TABLE temp;";
 		

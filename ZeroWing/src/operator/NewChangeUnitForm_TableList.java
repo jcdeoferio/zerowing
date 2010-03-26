@@ -69,7 +69,7 @@ public class NewChangeUnitForm_TableList extends javax.swing.JFrame {
         jLabel1.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
         jLabel1.setText("Create Change Units");
 
-        jLabel2.setText("Select a table to add Change Units");
+        jLabel2.setText("Select table(s) to add Change Units");
 
         addChangeUnitsButton.setText("Add Change Units");
         addChangeUnitsButton.addActionListener(new java.awt.event.ActionListener() {

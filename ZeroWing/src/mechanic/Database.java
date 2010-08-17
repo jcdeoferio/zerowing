@@ -354,11 +354,11 @@ public class Database {
 				if(attribute.equals("entityid"))
 					continue;
 				
-				/*
+				
 				//let autoincrementing columns assign their own IDs 
 				if(columnRS.getString("IS_AUTOINCREMENT").equals("YES"))
 					continue;
-				*/
+				
 				
 				attrEntries.add(new Pair<String, String>(tablename, attribute));
 			}

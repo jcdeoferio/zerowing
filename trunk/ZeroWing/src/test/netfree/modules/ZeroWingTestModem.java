@@ -26,7 +26,9 @@ public class ZeroWingTestModem {
 	}
 	public List<String> getUpdateList(
 			Node node, String updateRequest){
+		displayln("[getUpdateList]=================================");
 		displayln("[getUpdateList]:"+node.getPeerName());
+		displayln("[getUpdateList](request):"+updateRequest);
 		Database db = node.db;
 		Filter filter;
 		VersionVector vv;

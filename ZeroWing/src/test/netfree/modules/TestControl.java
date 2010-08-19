@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
@@ -45,11 +46,17 @@ public class TestControl {
 	Node[] nodes;
 	Edge[] edges;
 	int syncs;
+	PrintStream logger;
+	String name;
 	
 	public static TestControl getTestControl(){
 		return new TestControl();
 	}
 	private TestControl(){
+		name = "offlinesynctest-"+Utility.timestamp();
+		try { logger = new PrintStream(name+".txt"); } 
+		catch (FileNotFoundException e) { e.printStackTrace(); }
+		
 		defaultTest();
 		
 	}
@@ -57,9 +64,10 @@ public class TestControl {
 	 * Default test setup. Uses 2 nodes, but your mileage may vary.
 	 */
 	private void defaultTest(){
-		nodes = new Node[3];
+		nodes = new Node[4];
 		edges = new Edge[1];
-		syncs = 5;
+		syncs = 100;
+		
 		try{
 			for(int i=0;i<nodes.length;i++){
 				Node a = Node.getCleanNode(""+i, "127.0.0.1", 3306, 
@@ -81,15 +89,39 @@ public class TestControl {
 			displayError("[defaultTest] IOException");
 			e.printStackTrace();
 		}
-		runRandomTest(syncs);
-		
+//		runRandomTest(syncs);
+//		runRealRandomTest();
+		runTest();
 	}
 	
 	/**
 	 * <code>runTest</code> runs a test using the <code>edges</code> variable.
 	 */
 	public void runTest(){
-		
+		// BEING USED AS A DEBUG TOOL.
+		//TODO: fix tester
+		Node a = nodes[0];
+		Node b = nodes[1];
+		Node c = nodes[2];
+		Node d = nodes[3];
+		logger.println("Running Debug Test");
+		ZeroWingTestModem testModem = new ZeroWingTestModem();
+
+		try {
+			logger.println("syncing "+a.getPeerName()+" and "+b.getPeerName());
+			int result1 = twoWaySync(a, b, testModem);
+			
+			logger.println("syncing "+c.getPeerName()+" and "+d.getPeerName());
+			int result1a = twoWaySync(c, d, testModem);
+			
+			logger.println("syncing "+b.getPeerName()+" and "+c.getPeerName());
+			int result2 = twoWaySync(b, c, testModem);
+			
+			logger.println("syncing "+b.getPeerName()+" and "+c.getPeerName());
+			int result3 = twoWaySync(b, c, testModem);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
 	/**
 	 * By RandomTest, this test means random edges.
@@ -128,8 +160,10 @@ public class TestControl {
 				// ======= BRUNT OF DRIVER:
 				String giverName = giver.getPeerName();
 				List<String> updates = testModem.getUpdateList(getter,giver);
+				int updateLength= 0;
 				for(int i=0;i<updates.size();i++){
 					String updateString = updates.get(i);
+					updateLength += updateString.length(); 
 					getter.db.insertUpdate(updateString, giverName);
 //					displayln("[runRandomTest][run][data]:        "+updates.get(i));
 				}
@@ -137,11 +171,90 @@ public class TestControl {
 				displayln("[runRandomTest][run]:    Using request string >> "+testModem.constructUpdateRequest(getter.db));
 				displayln("[runRandomTest][run]:    "+updates.size()+" updates syncing: "+getter.getPeerName()+
 						" and " + giver.getPeerName());
+				displayln("[runRandomTest][run]:	"+updateLength);
+				logger.println(getter.peerName+"\t"+giver.peerName+"\t"+updateLength);
 			} catch (SQLException e) {
 				displayError("[runRandomTest][run "+run+"] terminated due to sql error "+e.getLocalizedMessage());
 				e.printStackTrace();
 			}
 		}
+	}
+	public void runRealRandomTest(){
+		if(nodes.length<2){
+			displayError("[runRealRandomTest]: Running a sync test on one or fewer nodes would result in" +
+					" no data, because it would only sync with itself.");
+			return;
+		} else if(syncs < 1){
+			displayError("[runRealRandomTest]: Running a sync test with "+syncs+ " syncs would be weird. Seriously.");
+			return;
+		}
+		displayln("[runRealRandomTest]: Running syncs test on "+nodes.length+" nodes.");
+		displayln("[runRealRandomTest]: Testing nodes with "+syncs+" syncs.");
+		int len = nodes.length;
+		
+		Node getter;
+		Node giver;
+		ZeroWingTestModem testModem = new ZeroWingTestModem();
+		Random r = new Random();
+		for(int run = 0; run < syncs; run++){
+			try {		
+				displayln("[runRealRandomTest][run]:Test run "+run+".");
+				getter = nodes[r.nextInt(len)];
+				giver = nodes[r.nextInt(len)];
+				if(getter.peerName == giver.peerName){
+					run--; continue;
+				}
+				
+				int updateLength = sync(getter, giver, testModem);
+				updateLength += sync(giver, getter, testModem);
+				// ======= DISPLAYERS
+//				displayln("[runRealRandomTest][run]:    Using request string >> "+testModem.constructUpdateRequest(getter.db));
+//				displayln("[runRealRandomTest][run]:    "+updates.size()+" updates syncing: "+getter.getPeerName()+
+//						" and " + giver.getPeerName());
+				displayln("[runRealRandomTest][run]:	"+updateLength);
+				logger.println("\t" +
+						getter.peerName+":"+testModem.constructUpdateRequest(getter.db)+"\t" +
+						giver.peerName+":"+testModem.constructUpdateRequest(giver.db));
+				logger.println(getter.peerName+"\t"+giver.peerName+"\t"+updateLength);
+			} catch (SQLException e) {
+				displayError("[runRealRandomTest][run "+run+"] terminated due to sql error "+e.getLocalizedMessage());
+				e.printStackTrace();
+			}
+		}
+	}
+	public int sync(Node getter, Node giver, ZeroWingTestModem testModem ) throws SQLException{
+		getter.db.flushChangeLogTable();
+		giver.db.flushChangeLogTable();
+		String giverName = giver.getPeerName();
+		List<String> updates = testModem.getUpdateList(getter,giver);
+		int updateLength= 0;
+		logger.println("    "+getter.peerName+" <- "+giver.peerName);
+		logger.println("    "+getter.peerName+":"+getter.db.versionString() +
+				"\t"+giver.peerName+":"+giver.db.versionString());
+		for(int i=0;i<updates.size();i++){
+			String updateString = updates.get(i);
+			updateLength += updateString.length(); 
+			getter.db.insertUpdate(updateString, giverName);
+//			logger.println("        >"+updateString);
+//			displayln("[runRandomTest][run][data]:        "+updates.get(i));
+		}
+		displayln("    "+getter.peerName+":"+getter.db.versionString() +
+				"\t"+giver.peerName+":"+giver.db.versionString());
+		return updateLength;
+	}
+	public int twoWaySync(Node a, Node b, ZeroWingTestModem testModem) throws SQLException{
+		displayln("[twoWaySync]: ===========================================================");
+		int result1 = sync(a,b,testModem);
+		logger.println(result1);
+		int result2 = sync(b,a, testModem);
+		logger.println(result2);
+//		logger.println("     final>"+a.peerName+":"+testModem.constructUpdateRequest(a.db) +
+//				"\t"+b.peerName+":"+testModem.constructUpdateRequest(b.db));
+		logger.println("\tfinal>"+a.peerName+" -- "+a.db.versionString()+"\t\t"+
+			b.peerName+"="+b.db.versionString());
+		logger.println("\t"+a.peerName+"\t"+b.peerName+"\t"+(result1+result2));
+		logger.println("==================================");
+		return result1+result2;
 	}
 	/**
 	 * receives schema

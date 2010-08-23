@@ -20,6 +20,7 @@ import util.ParenScanner;
 import util.Utility;
 
 public class Database {
+	boolean debug = false;
 	private enum TriggerOperation{
 		INSERT, UPDATE, DELETE
 	}
@@ -204,7 +205,6 @@ public class Database {
 			
 			prevcuname = cuname;
 		}
-		
 		if(!hasCU)
 			return;
 		
@@ -619,7 +619,7 @@ public class Database {
  
 	public List<String> getUpdates(Filter filter, VersionVector vv) throws SQLException {
 		flushChangeLogTable();
-		System.out.println(Utility.now()+"GETTING UPDATES FOR: " + vv);
+		System.out.println(Utility.now()+" GETTING UPDATES FOR: " + vv);
 		System.out.println("WITH FILTOR:"+filter);
 		List<String> updates = new LinkedList<String>();
 		
@@ -627,6 +627,8 @@ public class Database {
 		StringBuilder withoutMetadata = new StringBuilder();//TODO:FOR TESTING
 		
 		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM "+zwDataVersionsTable+" INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter");
+//		String query = "SELECT DISTINCT cuname, cuentityid FROM "+zwDataVersionsTable+" INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter";
+//		debugPrint(">>> GETTING UPDATES: "+query);
 			
 		//for each cuentityid with version newer than the one in vv
 		while(cuentityidRS.next()){
@@ -640,7 +642,7 @@ public class Database {
 			
 			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute FROM changeunitentities cue WHERE cuentityid = ? AND EXISTS(SELECT cuentityid FROM "+cuname+" WHERE cuentityid = cue.cuentityid AND "+filter.getForCU(cuname)+") ORDER BY tablename");
 			dataPS.setString(1, cuentityid);
-			System.out.println("STATEMENT:"+dataPS);
+//			System.out.println("STATEMENT:"+dataPS);
 			ResultSet dataRS = dataPS.executeQuery();
 			while(dataRS.next()){
 				String entityid = dataRS.getString("entityid");
@@ -691,7 +693,8 @@ public class Database {
 			
 			withMetadata.append(cudata);
 		}
-		
+		for(int i=0;i<updates.size();i++)
+			debugPrint("updateSource: "+updates.get(i));
 		System.out.println(Utility.now()+" Done getting updates");
 		System.out.println("WITH METADATA:"+withMetadata.length());
 		System.out.println("WITHOUT METADATA:"+withoutMetadata.length());
@@ -764,22 +767,36 @@ public class Database {
 		System.out.println(Utility.now()+"Init done!");
 		return newSystemTables; //specifies if the system tables are new tables
 	}
-
+	public void debugPrint(String print){
+		if(debug)
+			System.out.println("DEBUG ===========================  "+print);
+	}
 	//updateString: encodedCUName cuentityid encodedCUVersion (encodedTablename entityid encodedAttribute:encodedValue:dataType)(...)
 	public void insertUpdate(String updateString, String syncPartner) throws SQLException {
+		debugPrint(" =================== INSERT START");
 		if(syncPartner == null)
 			throw new IllegalStateException("No sync partner set");
-		
+		debugPrint("updateString: "+updateString);
 		dbConn.getConnection().setAutoCommit(false);
 		String[] cuMsg = updateString.split(" ", 4);
 		String cuname = Utility.decode(cuMsg[0]);
 		String cuentityid = cuMsg[1];
 		VersionVector cuVV = new VersionVector(Utility.decode(cuMsg[2]), dbConn);
 		String tabledata = cuMsg[3];
-		
+
+		//TODO: switch back if not working
+		cuname = cuname.substring(1);
+		tabledata = tabledata.substring(0, tabledata.length()-1);
+		debugPrint("cuname: "+cuname);
+		debugPrint("cuentityid: "+cuentityid);
+
+		debugPrint("cuVV: "+Utility.decode(cuMsg[2]));
+		debugPrint("tabledata: "+tabledata);
 		ParenScanner pscTab = new ParenScanner(tabledata);
 		while(pscTab.hasNext()){
-			String[] tabMsg = pscTab.next().split(" ");
+			String pscTabNext = pscTab.next();
+			debugPrint("\ttableentry: "+pscTabNext);
+			String[] tabMsg = pscTabNext.split(" ");
 			String tablename = Utility.decode(tabMsg[0]);
 			String entityid = getLocalMapping(tabMsg[1], syncPartner);
 			
@@ -834,10 +851,38 @@ public class Database {
 			updatePS.setString(valDex, entityid);
 //			System.out.println("EXECUTING: "+updatePS);
 			detachTriggers(tablename);
+			// =============== new kevin code
+			
+			ResultSet columnsRS = getChangeUnitColumns(dbConn, tablename);
+			
+			// =============== end
 			try{
+				PreparedStatement insertPS = 
+					dbConn.prepareUpdatableStatement("INSERT INTO changeunitentities " +
+								"(entityid, tablename, attribute, cuentityid, cuname) VALUES " +
+								"(?, ?, ?, ?, ?)");
+				
+				while(columnsRS.next()){
+					String cunameRS = columnsRS.getString("cuname");
+					String attributeRS = columnsRS.getString("attribute");
+					debugPrint(">> "+ cunameRS + " // "+attributeRS);
+					insertPS.setObject(1, entityid);
+					insertPS.setObject(2, tablename);
+					insertPS.setObject(3, attributeRS);
+					insertPS.setObject(4, cuentityid);
+					insertPS.setObject(5, cunameRS);
+					insertPS.execute();
+					debugPrint("\tchangeunitentities:: " + insertPS.toString());
+					
+				}
+				
+				debugPrint("update " + updatePS.toString());
+				
 				updatePS.executeUpdate();
+				debugPrint("success");
 			}
 			catch(MySQLIntegrityConstraintViolationException e){ //TODO:Cross-site mapping patch
+				
 				final Pattern p = Pattern.compile(".*Duplicate entry '(.*)' for key '(.*)'");
 				final Matcher m = p.matcher(e.toString());
 				
@@ -887,9 +932,11 @@ public class Database {
 					updatePS.executeUpdate();
 				}
 			}
-			attachTriggers(tablename);
 			
+			attachTriggers(tablename); //this is really slow tho :\
+			debugPrint("cuvv DOING!");
 			cuVV.versionChangeUnit(cuentityid);
+			debugPrint("================================");
 		}
 		
 		dbConn.getConnection().setAutoCommit(true);
@@ -1009,5 +1056,14 @@ public class Database {
 	public void setFilterForCU(String cuname, String filterStr) throws SQLException{
 		filter.setForCU(cuname, filterStr);
 		filter.saveToDB();
+	}
+	// ================ kevin code
+	private ResultSet getChangeUnitColumns(DBConnection dbConnection, String tableName ) throws SQLException{
+		PreparedStatement columnsPS = 
+			dbConn.getConnection().prepareStatement(
+				"SELECT cuname, attribute FROM changeunits WHERE tablename = ? ORDER BY cuname, attribute");
+		columnsPS.setString(1, tableName);
+		ResultSet columnsRS = columnsPS.executeQuery();
+		return columnsRS;
 	}
 }

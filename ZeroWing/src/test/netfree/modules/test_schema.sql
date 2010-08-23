@@ -5,7 +5,7 @@ CREATE TABLE students (
 );
 
 CREATE TABLE stupid_students (
-    entity integer,
-    attribute character varying(20),
-    value text
+    val1 integer,
+    val2 character varying(20),
+    val3 text
 );

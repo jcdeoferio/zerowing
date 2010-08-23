@@ -3,6 +3,6 @@ students
 studentname studentnumber
 1 0
 3
-dansalta	1
-lissacaceres	2
-gerrickdaway	3
+1-1000	1000
+1-1001	1001
+1-1002	1002

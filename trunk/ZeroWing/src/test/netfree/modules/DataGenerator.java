@@ -5,7 +5,7 @@ public class DataGenerator {
 		DataGenerator dg = new DataGenerator(); 
 		System.out.println("1\nstudents\nstudentname studentnumber");
 		System.out.println("1 0");
-		dg.generateData("3", 1000, 20);
+		dg.generateData("3", 1000, 3);
 	}
 	public DataGenerator(){
 		

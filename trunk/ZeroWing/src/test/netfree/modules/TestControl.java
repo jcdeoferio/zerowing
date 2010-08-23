@@ -48,6 +48,8 @@ public class TestControl {
 	int syncs;
 	PrintStream logger;
 	String name;
+	String dbUserName = "root";
+	String dbPassword = "password";
 	
 	public static TestControl getTestControl(){
 		return new TestControl();
@@ -58,40 +60,59 @@ public class TestControl {
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		
 		defaultTest();
+//		plainDBRestart();
+	}
+	private void initializeNodes(){
+		nodes = new Node[4];
+		edges = new Edge[1];
+		syncs = 600;
 		
+		for(int i=0;i<nodes.length;i++){
+			Node a = Node.getCleanNode(""+i, "127.0.0.1", 3306, 
+					"mysql",
+					"test"+i+"_dev", 
+					dbUserName, dbPassword);
+			nodes[i] = a;
+			displayln("[initializeNodes]: NODE CREATION Done. ->"+a.toString());
+		}
+	}
+	private void plainDBRestart(){
+		initializeNodes();
+		for(int i=0;i<nodes.length;i++){
+			Node a = nodes[i];
+			try {
+				startDB(a);
+			} catch (SQLException sqle) {
+				displayError("[plainDBRestart] sqlexception in starting test node.");
+				sqle.printStackTrace();
+			}
+		}
 	}
 	/**
 	 * Default test setup. Uses 2 nodes, but your mileage may vary.
 	 */
 	private void defaultTest(){
-		nodes = new Node[4];
-		edges = new Edge[1];
-		syncs = 100;
-		
+		initializeNodes();
 		try{
 			for(int i=0;i<nodes.length;i++){
-				Node a = Node.getCleanNode(""+i, "127.0.0.1", 3306, 
-						"mysql",
-						"test"+i+"_dev", 
-						"root", "password");
-				nodes[i] = a;
-				displayln("[defaultTest]: NODE CREATION: "+a.toString());
+				Node a = nodes[i];
 				clearDB(a);
 				schematizeDBFromFile(a, "test");
 				startDB(a);
-				populateDBFromFile(a, "test");
+//				populateDBFromFile(a, "test");
 				displayln("[defaultTest]: NODE CREATION Done. ->"+a.toString());
 			}
+			populateDBSetFromFile(nodes, "test_random", 1000);
 		} catch (SQLException sqle){
-			displayError("[defaultTest] sqlexception in making test node.");
+			displayError("[defaultTest] sqlexception in generating test node.");
 			System.out.println(sqle.getLocalizedMessage());
 		} catch (IOException e) {
 			displayError("[defaultTest] IOException");
 			e.printStackTrace();
 		}
 //		runRandomTest(syncs);
-//		runRealRandomTest();
-		runTest();
+		runRealRandomTest();
+//		runTest();
 	}
 	
 	/**
@@ -105,17 +126,18 @@ public class TestControl {
 		Node c = nodes[2];
 		Node d = nodes[3];
 		logger.println("Running Debug Test");
-		ZeroWingTestModem testModem = new ZeroWingTestModem();
+		ZeroWingTestModem testModem = new ZeroWingTestModem(logger);
 
 		try {
 			logger.println("syncing "+a.getPeerName()+" and "+b.getPeerName());
 			int result1 = twoWaySync(a, b, testModem);
 			
+			logger.println("syncing "+b.getPeerName()+" and "+c.getPeerName());
+			int result2 = twoWaySync(b, c, testModem);
+			
 			logger.println("syncing "+c.getPeerName()+" and "+d.getPeerName());
 			int result1a = twoWaySync(c, d, testModem);
 			
-			logger.println("syncing "+b.getPeerName()+" and "+c.getPeerName());
-			int result2 = twoWaySync(b, c, testModem);
 			
 			logger.println("syncing "+b.getPeerName()+" and "+c.getPeerName());
 			int result3 = twoWaySync(b, c, testModem);
@@ -212,9 +234,9 @@ public class TestControl {
 //				displayln("[runRealRandomTest][run]:    "+updates.size()+" updates syncing: "+getter.getPeerName()+
 //						" and " + giver.getPeerName());
 				displayln("[runRealRandomTest][run]:	"+updateLength);
-				logger.println("\t" +
-						getter.peerName+":"+testModem.constructUpdateRequest(getter.db)+"\t" +
-						giver.peerName+":"+testModem.constructUpdateRequest(giver.db));
+//				logger.println("\t" +
+//						getter.peerName+":"+testModem.constructUpdateRequest(getter.db)+"\t" +
+//						giver.peerName+":"+testModem.constructUpdateRequest(giver.db));
 				logger.println(getter.peerName+"\t"+giver.peerName+"\t"+updateLength);
 			} catch (SQLException e) {
 				displayError("[runRealRandomTest][run "+run+"] terminated due to sql error "+e.getLocalizedMessage());
@@ -222,38 +244,41 @@ public class TestControl {
 			}
 		}
 	}
+	
 	public int sync(Node getter, Node giver, ZeroWingTestModem testModem ) throws SQLException{
-		getter.db.flushChangeLogTable();
-		giver.db.flushChangeLogTable();
 		String giverName = giver.getPeerName();
 		List<String> updates = testModem.getUpdateList(getter,giver);
 		int updateLength= 0;
-		logger.println("    "+getter.peerName+" <- "+giver.peerName);
-		logger.println("    "+getter.peerName+":"+getter.db.versionString() +
-				"\t"+giver.peerName+":"+giver.db.versionString());
+//		logger.println("    "+getter.peerName+" <- "+giver.peerName);
+//		logger.println("    "+getter.peerName+":"+getter.db.versionString() +
+//				"\t"+giver.peerName+":"+giver.db.versionString());
 		for(int i=0;i<updates.size();i++){
 			String updateString = updates.get(i);
+			if(getter.db.compareToLocalCU(updateString) == -2){
+				System.out.println("Conflicting update! Defaulting to accept");
+			}
 			updateLength += updateString.length(); 
 			getter.db.insertUpdate(updateString, giverName);
 //			logger.println("        >"+updateString);
 //			displayln("[runRandomTest][run][data]:        "+updates.get(i));
 		}
-		displayln("    "+getter.peerName+":"+getter.db.versionString() +
-				"\t"+giver.peerName+":"+giver.db.versionString());
+//		logger.println("    "+getter.peerName+":["+getter.db.versionString() +
+//				"]\t"+giver.peerName+":["+giver.db.versionString()+"]");
 		return updateLength;
 	}
+	
 	public int twoWaySync(Node a, Node b, ZeroWingTestModem testModem) throws SQLException{
 		displayln("[twoWaySync]: ===========================================================");
 		int result1 = sync(a,b,testModem);
-		logger.println(result1);
+//		logger.println(result1);
 		int result2 = sync(b,a, testModem);
-		logger.println(result2);
+//		logger.println(result2);
 //		logger.println("     final>"+a.peerName+":"+testModem.constructUpdateRequest(a.db) +
 //				"\t"+b.peerName+":"+testModem.constructUpdateRequest(b.db));
-		logger.println("\tfinal>"+a.peerName+" -- "+a.db.versionString()+"\t\t"+
-			b.peerName+"="+b.db.versionString());
-		logger.println("\t"+a.peerName+"\t"+b.peerName+"\t"+(result1+result2));
-		logger.println("==================================");
+//		logger.println("\tfinal>"+a.peerName+" -- "+a.db.versionString()+"\t\t"+
+//			b.peerName+"="+b.db.versionString());
+//		logger.println("\t"+a.peerName+"\t"+b.peerName+"\t"+(result1+result2));
+//		logger.println("==================================");
 		return result1+result2;
 	}
 	/**
@@ -293,8 +318,6 @@ public class TestControl {
 	 * @throws SQLException 
 	 */
 	public void populateDB(Node a, LinkedList<String> data) throws SQLException{
-		DBConnection dbc = a.getConnection();
-//		
 		if(data.size() < 1 ){
 			displayError("[populateDB]: loaded file for "+a.getPeerName()+" contained corrupt info.");
 			return;
@@ -337,6 +360,55 @@ public class TestControl {
 			}
 		}
 	}
+	public void populateDBRandomly(Node[] nodeArray, LinkedList<String> data, int inserts) throws SQLException{
+		// inserts are per table.
+		if(data.size() < 1 ){
+			displayError("[populateDBRandomly]: loaded data is corrupt.");
+			return;
+		}
+		while(data.size()>0){
+			int tables = Integer.parseInt(data.removeFirst());
+			displayln("[populateDBRandomly]: tables: "+tables);
+			for (int i=0;i<tables;i++){
+				String tableName = data.removeFirst();
+				displayln("[populateDBRandomly]: table["+i+"]: "+tableName);
+				String[] columnsArray = data.removeFirst().split(" ");
+				String[] typeArray = data.removeFirst().split(" ");
+				boolean[] types = new boolean[typeArray.length];
+				LinkedList<String> columns = new LinkedList<String>();
+				// Grab columns.
+				for(int j=0;j<columnsArray.length;j++)
+					columns.addLast(columnsArray[j]);
+				for(int j=0;j<typeArray.length;j++)
+					types[j] = typeArray[j].equals("1");
+				
+				Random r = new Random();
+				for(int insert=0;insert<inserts;insert++){
+					// get random node from nodeArray
+					
+					int nodeGot = r.nextInt(nodeArray.length);
+					Node nodeNow = nodeArray[nodeGot];
+//					displayln("inserting: "+insert+" to "+nodeNow.getPeerName());
+					DBConnection dbConn = nodeNow.getConnection();
+					PreparedStatement ps = 
+						prepareKeylessInsertStatement(tableName, columns, dbConn);
+					for(int entryIndex=0; entryIndex<columnsArray.length;entryIndex++){
+						int ind = entryIndex+1;
+						if(types[entryIndex]){
+							ps.setString(ind, "randomString-"+insert);
+						} else {
+							ps.setObject(ind, insert);
+						}
+					}
+					ps.execute();
+				}
+				
+				
+					
+			}
+		}
+		
+	}
 	/**
 	 * Calls <code>grabStringListFile</code> and then calls <code>populateDB</code> with the
 	 * values returned.
@@ -350,6 +422,11 @@ public class TestControl {
 		LinkedList<String> data = grabStringListFile(
 				"src/test/netfree/modules/"+fileName+"_"+a.getPeerName()+"_data.sql");
 		populateDB(a, data);
+	}
+	public void populateDBSetFromFile(Node[] nodeArray, String fileName, int inserts) throws IOException, SQLException{
+		LinkedList<String> data = grabStringListFile(
+				"src/test/netfree/modules/"+fileName+"_data.sql");
+		populateDBRandomly(nodes, data, inserts);
 	}
 	
 	/**

@@ -1,5 +1,6 @@
 package test.netfree.modules;
 
+import java.io.PrintStream;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -17,8 +18,12 @@ import mechanic.VersionVector;
  *
  */
 public class ZeroWingTestModem {
+	PrintStream logger = null;	
 	public ZeroWingTestModem(){
 		
+	}
+	public ZeroWingTestModem(PrintStream logger){
+		this.logger = logger; 
 	}
 	public List<String> getUpdateList(Node getter, Node giver){
 		String updateRequest = constructUpdateRequest(getter.db);
@@ -29,6 +34,9 @@ public class ZeroWingTestModem {
 		displayln("[getUpdateList]=================================");
 		displayln("[getUpdateList]:"+node.getPeerName());
 		displayln("[getUpdateList](request):"+updateRequest);
+		if(logger!=null)
+			logger.println("(request):"+updateRequest);
+		
 		Database db = node.db;
 		Filter filter;
 		VersionVector vv;

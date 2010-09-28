@@ -25,6 +25,7 @@ public class Node {
 	String dbName;
 	String dbUser;
 	String dbPassword;
+	DBConnection db_conn;
 	
 	Database db;
 	// ============================= INSTANTIATION METHODS
@@ -92,6 +93,7 @@ public class Node {
 		this.dbName = dbName;
 		this.dbPassword = dbPassword;
 		this.ip = ip;
+		
 	}
 	public void startDB() throws SQLException{
 		db = new Database(dbType, ip, dbPort, dbName, dbUser, dbPassword, peerName);
@@ -105,7 +107,13 @@ public class Node {
 	 * @throws SQLException
 	 */
 	public DBConnection getConnection() throws SQLException{
-		return DBConnection.getDBConnection(dbType, ip, dbPort, dbName, dbUser, dbPassword);
+		if (this.db_conn==null){
+			this.db_conn = DBConnection.getDBConnection(dbType, ip, dbPort, dbName, dbUser, dbPassword);
+		}
+		if (this.db_conn.getConnection().isClosed()){
+			this.db_conn = DBConnection.getDBConnection(dbType, ip, dbPort, dbName, dbUser, dbPassword);
+		}
+		return db_conn;
 	}
 	public String getPeerName(){
 		return peerName;

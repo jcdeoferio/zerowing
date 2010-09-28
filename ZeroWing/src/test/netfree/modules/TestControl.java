@@ -50,12 +50,14 @@ public class TestControl {
 	String name;
 	String dbUserName = "root";
 	String dbPassword = "password";
+	int testId = 0;
 	
-	public static TestControl getTestControl(){
-		return new TestControl();
+	public static TestControl getTestControl(int testId){
+		return new TestControl(testId);
 	}
-	private TestControl(){
-		name = "offlinesynctest-"+Utility.timestamp();
+	private TestControl(int testId){
+		name = "offlinesynctest-"+testId;
+		this.testId = testId;
 		try { logger = new PrintStream(name+".txt"); } 
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		
@@ -63,7 +65,7 @@ public class TestControl {
 //		plainDBRestart();
 	}
 	private void initializeNodes(){
-		nodes = new Node[4];
+		nodes = new Node[8];
 		edges = new Edge[1];
 		syncs = 600;
 		
@@ -74,6 +76,15 @@ public class TestControl {
 					dbUserName, dbPassword);
 			nodes[i] = a;
 			displayln("[initializeNodes]: NODE CREATION Done. ->"+a.toString());
+		}
+		for(int i=0;i<nodes.length;i++){
+			Node a = nodes[i];
+			try {
+				a.getConnection().getConnection().close();
+			} catch (SQLException e) {
+				displayError("YO! SQL ERROR IN CLOSENG'G");
+				e.printStackTrace();
+			}
 		}
 	}
 	private void plainDBRestart(){
@@ -102,7 +113,7 @@ public class TestControl {
 //				populateDBFromFile(a, "test");
 				displayln("[defaultTest]: NODE CREATION Done. ->"+a.toString());
 			}
-			populateDBSetFromFile(nodes, "test_random", 1000);
+			populateDBSetFromFile(nodes, "test_random", 100);
 		} catch (SQLException sqle){
 			displayError("[defaultTest] sqlexception in generating test node.");
 			System.out.println(sqle.getLocalizedMessage());
@@ -170,7 +181,7 @@ public class TestControl {
 		for(int run = 0; run < syncs; run++){
 			try {
 				
-				displayln("[runRandomTest][run]:Test run "+run+".");
+//				displayln("[runRandomTest][run]:Test run "+run+".");
 				// ======= GET INDEX OF CURRENT NODES BEING SYNCED
 				int marker2 = marker++;
 				if(marker>=len)marker = marker%len;
@@ -220,7 +231,7 @@ public class TestControl {
 		Random r = new Random();
 		for(int run = 0; run < syncs; run++){
 			try {		
-				displayln("[runRealRandomTest][run]:Test run "+run+".");
+//				displayln("[runRealRandomTest][run]:Test run "+run+".");
 				getter = nodes[r.nextInt(len)];
 				giver = nodes[r.nextInt(len)];
 				if(getter.peerName == giver.peerName){
@@ -238,6 +249,8 @@ public class TestControl {
 //						getter.peerName+":"+testModem.constructUpdateRequest(getter.db)+"\t" +
 //						giver.peerName+":"+testModem.constructUpdateRequest(giver.db));
 				logger.println(getter.peerName+"\t"+giver.peerName+"\t"+updateLength);
+				getter.getConnection().getConnection().close();
+				giver.getConnection().getConnection().close();
 			} catch (SQLException e) {
 				displayError("[runRealRandomTest][run "+run+"] terminated due to sql error "+e.getLocalizedMessage());
 				e.printStackTrace();

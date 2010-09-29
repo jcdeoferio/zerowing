@@ -49,11 +49,11 @@ public class DataAnalyzer {
 //			if(data[i]!=0){
 //				displayln(i+":"+data[i]/len);
 //			}
-			double simpleAverage = (double)data[i]/(double)len;
+			double simpleAverage = (double)data[i]/(double)reps;
 			double nonzeroAverage = (double)data[i]/(double)withData[i];
 			if(withData[i]==0)nonzeroAverage = 0;
 //			System.out.println( simpleAverage + " : " + nonzeroAverage);
-			System.out.println( simpleAverage );
+			System.out.println( simpleAverage);
 //			System.out.println( nonzeroAverage );
 		}
 		displayln("done!");
@@ -63,7 +63,18 @@ public class DataAnalyzer {
 	}
 	
 	public static void main(String[] args) throws IOException{
-		DataAnalyzer da = new DataAnalyzer("offlinesynctest-",".txt", 297, 600);
+		// 4 nodes
+//		DataAnalyzer da = new DataAnalyzer("offlinesyncs/offlinesynctest-",".txt", 247, 600);
+		
+		// 6 nodes
+//		DataAnalyzer da = new DataAnalyzer("syncs-6nodes/offlinesynctest-",".txt", 206, 600);
+
+		// 8 nodes
+//		DataAnalyzer da = new DataAnalyzer("syncs-8nodes/offlinesynctest-",".txt", 6, 600);		
+
+		// 10 nodes
+		DataAnalyzer da = new DataAnalyzer("syncs-10nodes/offlinesynctest-",".txt", 297, 600);
+		
 		da.readData();
 	}
 }

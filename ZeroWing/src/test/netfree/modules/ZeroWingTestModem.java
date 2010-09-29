@@ -36,8 +36,8 @@ public class ZeroWingTestModem {
 		displayln("[getUpdateList]=================================");
 		displayln("[getUpdateList]:"+node.getPeerName());
 		displayln("[getUpdateList](request):"+updateRequest);
-		if(logger!=null)
-			logger.println("(request):"+updateRequest);
+//		if(logger!=null)
+//			logger.println("(request):"+updateRequest);
 		
 		Database db = node.db;
 		Filter filter;
@@ -57,7 +57,7 @@ public class ZeroWingTestModem {
 		try {
 			filter = new Filter(Utility.decode(filterStr));
 			vv = new VersionVector(Utility.decode(versionVectorStr));
-			updates = db.getUpdates(filter, vv);
+			updates = db.getUpdates(filter, vv, logger);
 		} catch (SQLException e) {
 			displayln("[EXCEPTION]: "+e.getLocalizedMessage());
 			e.printStackTrace();

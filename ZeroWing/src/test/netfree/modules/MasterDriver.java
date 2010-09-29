@@ -10,27 +10,38 @@ import java.sql.SQLException;
  */
 public class MasterDriver {
 	public static void main(String[] args){
-		MasterDriver md = new MasterDriver("syncs-4nodes/", 0, 4, 100, 240);
+		String baseTest = "randomString";
 		
-		md.runAllTests();
+//		MasterDriver md = new MasterDriver("syncs-8nodes/", 181, 8, 100, 60, baseTest);
+//		
+//		md.runAllTests();
+		
+		MasterDriver md10 = new MasterDriver("syncs-10nodes/", 34, 10, 100, 240, baseTest);
+		
+		md10.runAllTests();
+		
+		
+		
 	}
 	int start = 0;
 	int nodeCount = 4;
 	int inserts = 100;
 	String namePrefix = "testerr/";
 	int repeats = 1;
-	public MasterDriver(String namePrefix, int start, int nodeCount, int inserts, int repeats){
+	String randomString;
+	public MasterDriver(String namePrefix, int start, int nodeCount, int inserts, int repeats, String randomString){
 		this.namePrefix = namePrefix;
 		this.start = start;
 		this.nodeCount = nodeCount;
 		this.inserts = inserts;
 		this.repeats = repeats;
+		this.randomString = randomString;
 	}
 	public void runAllTests(){
 		for (int i=0 ;i<repeats;i++){
 			System.out.println("==================== start test "+i);
 			TestControl tc;
-			tc = TestControl.getTestControl(namePrefix, start+i, nodeCount, inserts);
+			tc = TestControl.getTestControl(namePrefix, start+i, nodeCount, inserts, randomString);
 			
 			System.out.println("==================== end test "+i);
 			

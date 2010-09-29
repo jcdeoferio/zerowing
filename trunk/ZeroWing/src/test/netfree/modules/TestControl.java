@@ -54,10 +54,10 @@ public class TestControl {
 	int testId = 0;
 	boolean print = false;
 	
-	public static TestControl getTestControl(String namePrefix, int testId, int nodeCount, int inserts){
-		return new TestControl(namePrefix, testId, nodeCount, inserts);
+	public static TestControl getTestControl(String namePrefix, int testId, int nodeCount, int inserts, String randomString){
+		return new TestControl(namePrefix, testId, nodeCount, inserts, randomString);
 	}
-	private TestControl(String namePrefix, int testId, int nodeCount, int inserts){
+	private TestControl(String namePrefix, int testId, int nodeCount, int inserts, String randomString){
 		name = namePrefix+"offlinesynctest-"+testId;
 		String error_log_name = namePrefix+"errorlogs/error_offlinesynctest-"+testId; 
 		this.testId = testId;
@@ -66,7 +66,7 @@ public class TestControl {
 		} 
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		
-		defaultTest(nodeCount, inserts);
+		defaultTest(nodeCount, inserts, randomString);
 //		plainDBRestart();
 	}
 	private void initializeNodes(int nodeCount){
@@ -114,7 +114,7 @@ public class TestControl {
 	/**
 	 * Default test setup. Uses 2 nodes, but your mileage may vary.
 	 */
-	private void defaultTest(int nodeCount, int inserts){
+	private void defaultTest(int nodeCount, int inserts, String randomString){
 		initializeNodes(nodeCount);
 		try{
 			for(int i=0;i<nodes.length;i++){
@@ -125,7 +125,7 @@ public class TestControl {
 //				populateDBFromFile(a, "test");
 				displayln("[defaultTest]: NODE CREATION Done. ->"+a.toString());
 			}
-			populateDBSetFromFile(nodes, "test_random", inserts);
+			populateDBSetFromFile(nodes, "test_random", inserts, randomString);
 		} catch (SQLException sqle){
 			displayError("[defaultTest] sqlexception in generating test node -> "+sqle.getLocalizedMessage());
 			System.out.println(sqle.getLocalizedMessage());
@@ -393,7 +393,7 @@ public class TestControl {
 			}
 		}
 	}
-	public void populateDBRandomly(Node[] nodeArray, LinkedList<String> data, int inserts) throws SQLException{
+	public void populateDBRandomly(Node[] nodeArray, LinkedList<String> data, int inserts, String randomString) throws SQLException{
 		// inserts are per table.
 		if(data.size() < 1 ){
 			displayError("[populateDBRandomly]: loaded data is corrupt.");
@@ -428,7 +428,7 @@ public class TestControl {
 					for(int entryIndex=0; entryIndex<columnsArray.length;entryIndex++){
 						int ind = entryIndex+1;
 						if(types[entryIndex]){
-							ps.setString(ind, "randomString-"+insert);
+							ps.setString(ind, randomString+"-"+insert);
 						} else {
 							ps.setObject(ind, insert);
 						}
@@ -456,10 +456,10 @@ public class TestControl {
 				"src/test/netfree/modules/"+fileName+"_"+a.getPeerName()+"_data.sql");
 		populateDB(a, data);
 	}
-	public void populateDBSetFromFile(Node[] nodeArray, String fileName, int inserts) throws IOException, SQLException{
+	public void populateDBSetFromFile(Node[] nodeArray, String fileName, int inserts, String randomString) throws IOException, SQLException{
 		LinkedList<String> data = grabStringListFile(
 				"src/test/netfree/modules/"+fileName+"_data.sql");
-		populateDBRandomly(nodes, data, inserts);
+		populateDBRandomly(nodes, data, inserts, randomString);
 	}
 	
 	/**

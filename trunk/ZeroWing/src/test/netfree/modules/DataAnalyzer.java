@@ -28,13 +28,16 @@ public class DataAnalyzer {
 		int len = data.length;
 		int[] withData = new int[len];
 		for(int i=0;i<len;i++)withData[i]=0;
-		
+//		System.out.println(": start: "+0+" max: "+max);
 		for(int i=repstart;i<max;i++){
-			File f = new File(namePrefix+""+i+""+nameSuffix);
+			String fileName=namePrefix+""+i+""+nameSuffix;
+			File f = new File(fileName);
+//			System.out.println("run: "+i+" >> "+fileName);
 //			displayln("reading "+f.getAbsolutePath());
 			BufferedReader br = new BufferedReader(new FileReader(f));
 			for(int line =0;line<len;line++){
 				String dataline = br.readLine();
+//				System.out.println(">> "+i+":"+line+":"+dataline+" <<");
 				String[] splitted = dataline.split("\t");
 //				displayln(">>"+ splitted[2]);
 				if(!splitted[2].equals("0")){
@@ -56,7 +59,7 @@ public class DataAnalyzer {
 			System.out.println( simpleAverage);
 //			System.out.println( nonzeroAverage );
 		}
-		displayln("done!");
+//		displayln("done!");
 	}
 	public void displayln(String msg){
 		System.out.println("[DataAnalyzer]"+msg);
@@ -66,14 +69,17 @@ public class DataAnalyzer {
 		// 4 nodes
 //		DataAnalyzer da = new DataAnalyzer("offlinesyncs/offlinesynctest-",".txt", 247, 600);
 		
+		// 4 nodes
+//		DataAnalyzer da = new DataAnalyzer("syncs-4nodes/offlinesynctest-",".txt", 240, 600);
+		
 		// 6 nodes
 //		DataAnalyzer da = new DataAnalyzer("syncs-6nodes/offlinesynctest-",".txt", 206, 600);
 
 		// 8 nodes
-//		DataAnalyzer da = new DataAnalyzer("syncs-8nodes/offlinesynctest-",".txt", 6, 600);		
+//		DataAnalyzer da = new DataAnalyzer("syncs-8nodes/offlinesynctest-",".txt", 240, 600);		
 
 		// 10 nodes
-		DataAnalyzer da = new DataAnalyzer("syncs-10nodes/offlinesynctest-",".txt", 297, 600);
+		DataAnalyzer da = new DataAnalyzer("syncs-10nodes/offlinesynctest-",".txt", 26, 600);
 		
 		da.readData();
 	}

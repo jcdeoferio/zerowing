@@ -10,11 +10,27 @@ import java.sql.SQLException;
  */
 public class MasterDriver {
 	public static void main(String[] args){
-		int start = 0;
-		for (int i=0 ;i<200;i++){
+		MasterDriver md = new MasterDriver("syncs-4nodes/", 0, 4, 100, 240);
+		
+		md.runAllTests();
+	}
+	int start = 0;
+	int nodeCount = 4;
+	int inserts = 100;
+	String namePrefix = "testerr/";
+	int repeats = 1;
+	public MasterDriver(String namePrefix, int start, int nodeCount, int inserts, int repeats){
+		this.namePrefix = namePrefix;
+		this.start = start;
+		this.nodeCount = nodeCount;
+		this.inserts = inserts;
+		this.repeats = repeats;
+	}
+	public void runAllTests(){
+		for (int i=0 ;i<repeats;i++){
 			System.out.println("==================== start test "+i);
 			TestControl tc;
-			tc = TestControl.getTestControl(start+i);
+			tc = TestControl.getTestControl(namePrefix, start+i, nodeCount, inserts);
 			
 			System.out.println("==================== end test "+i);
 			
@@ -29,8 +45,8 @@ public class MasterDriver {
 			}
 		}
 		System.out.println("all tests done");
-		
 	}
+	
 	
 	public void displayln(String msg){
 		System.out.println("[MasterDriver]"+msg);

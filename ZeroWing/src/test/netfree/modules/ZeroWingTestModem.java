@@ -19,11 +19,13 @@ import mechanic.VersionVector;
  */
 public class ZeroWingTestModem {
 	PrintStream logger = null;	
-	public ZeroWingTestModem(){
-		
+	boolean print = false;
+	public ZeroWingTestModem(boolean print){
+		this.print = print;
 	}
-	public ZeroWingTestModem(PrintStream logger){
+	public ZeroWingTestModem(PrintStream logger, boolean print){
 		this.logger = logger; 
+		this.print = print;
 	}
 	public List<String> getUpdateList(Node getter, Node giver){
 		String updateRequest = constructUpdateRequest(getter.db);
@@ -74,7 +76,8 @@ public class ZeroWingTestModem {
 	}
 	
 	public void displayln(String msg){
-		System.out.println("[ZeroWingTestModem]"+msg);
+		if(print)
+			System.out.println("[ZeroWingTestModem]"+msg);
 		
 	}
 }

@@ -47,25 +47,30 @@ public class TestControl {
 	Edge[] edges;
 	int syncs;
 	PrintStream logger;
+	PrintStream error_logger;
 	String name;
 	String dbUserName = "root";
 	String dbPassword = "password";
 	int testId = 0;
+	boolean print = false;
 	
-	public static TestControl getTestControl(int testId){
-		return new TestControl(testId);
+	public static TestControl getTestControl(String namePrefix, int testId, int nodeCount, int inserts){
+		return new TestControl(namePrefix, testId, nodeCount, inserts);
 	}
-	private TestControl(int testId){
-		name = "offlinesynctest-"+testId;
+	private TestControl(String namePrefix, int testId, int nodeCount, int inserts){
+		name = namePrefix+"offlinesynctest-"+testId;
+		String error_log_name = namePrefix+"errorlogs/error_offlinesynctest-"+testId; 
 		this.testId = testId;
-		try { logger = new PrintStream(name+".txt"); } 
+		try { logger = new PrintStream(name+".txt");
+		      error_logger = new PrintStream(error_log_name+".txt");
+		} 
 		catch (FileNotFoundException e) { e.printStackTrace(); }
 		
-		defaultTest();
+		defaultTest(nodeCount, inserts);
 //		plainDBRestart();
 	}
-	private void initializeNodes(){
-		nodes = new Node[8];
+	private void initializeNodes(int nodeCount){
+		nodes = new Node[nodeCount];
 		edges = new Edge[1];
 		syncs = 600;
 		
@@ -87,8 +92,14 @@ public class TestControl {
 			}
 		}
 	}
-	private void plainDBRestart(){
-		initializeNodes();
+	
+	private void cleanNodes() throws SQLException{
+		for(Node n:nodes){
+			n.getConnection().getConnection().close();
+		}
+	}
+	private void plainDBRestart(int nodeCount){
+		initializeNodes(nodeCount);
 		for(int i=0;i<nodes.length;i++){
 			Node a = nodes[i];
 			try {
@@ -99,11 +110,12 @@ public class TestControl {
 			}
 		}
 	}
+	
 	/**
 	 * Default test setup. Uses 2 nodes, but your mileage may vary.
 	 */
-	private void defaultTest(){
-		initializeNodes();
+	private void defaultTest(int nodeCount, int inserts){
+		initializeNodes(nodeCount);
 		try{
 			for(int i=0;i<nodes.length;i++){
 				Node a = nodes[i];
@@ -113,9 +125,9 @@ public class TestControl {
 //				populateDBFromFile(a, "test");
 				displayln("[defaultTest]: NODE CREATION Done. ->"+a.toString());
 			}
-			populateDBSetFromFile(nodes, "test_random", 100);
+			populateDBSetFromFile(nodes, "test_random", inserts);
 		} catch (SQLException sqle){
-			displayError("[defaultTest] sqlexception in generating test node.");
+			displayError("[defaultTest] sqlexception in generating test node -> "+sqle.getLocalizedMessage());
 			System.out.println(sqle.getLocalizedMessage());
 		} catch (IOException e) {
 			displayError("[defaultTest] IOException");
@@ -123,6 +135,11 @@ public class TestControl {
 		}
 //		runRandomTest(syncs);
 		runRealRandomTest();
+		try {
+			cleanNodes();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 //		runTest();
 	}
 	
@@ -137,7 +154,7 @@ public class TestControl {
 		Node c = nodes[2];
 		Node d = nodes[3];
 		logger.println("Running Debug Test");
-		ZeroWingTestModem testModem = new ZeroWingTestModem(logger);
+		ZeroWingTestModem testModem = new ZeroWingTestModem(logger, print);
 
 		try {
 			logger.println("syncing "+a.getPeerName()+" and "+b.getPeerName());
@@ -177,7 +194,7 @@ public class TestControl {
 		
 		Node getter;
 		Node giver;
-		ZeroWingTestModem testModem = new ZeroWingTestModem();
+		ZeroWingTestModem testModem = new ZeroWingTestModem(logger,print);
 		for(int run = 0; run < syncs; run++){
 			try {
 				
@@ -211,6 +228,9 @@ public class TestControl {
 				e.printStackTrace();
 			}
 		}
+		//TODO: finish closing connns.
+//		nodes[0].getConnection().getConnection().commit().
+		
 	}
 	public void runRealRandomTest(){
 		if(nodes.length<2){
@@ -227,7 +247,7 @@ public class TestControl {
 		
 		Node getter;
 		Node giver;
-		ZeroWingTestModem testModem = new ZeroWingTestModem();
+		ZeroWingTestModem testModem = new ZeroWingTestModem(error_logger, print);
 		Random r = new Random();
 		for(int run = 0; run < syncs; run++){
 			try {		
@@ -268,7 +288,7 @@ public class TestControl {
 		for(int i=0;i<updates.size();i++){
 			String updateString = updates.get(i);
 			if(getter.db.compareToLocalCU(updateString) == -2){
-				System.out.println("Conflicting update! Defaulting to accept");
+				displayln("Conflicting update! Defaulting to accept");
 			}
 			updateLength += updateString.length(); 
 			getter.db.insertUpdate(updateString, giverName);
@@ -676,7 +696,7 @@ public class TestControl {
 	}
 	
 	public void displayln(String msg){
-		System.out.println("[TestControl]"+msg);
+		if(print)System.out.println("[TestControl]"+msg);
 	}
 	public void displayError(String errorMsg){
 		displayln("[Error]"+errorMsg);

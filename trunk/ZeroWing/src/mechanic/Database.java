@@ -1,5 +1,6 @@
 package mechanic;
 
+import java.io.PrintStream;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -701,6 +702,97 @@ public class Database {
 		
 		return(updates);
 	}
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	public List<String> getUpdates(Filter filter, VersionVector vv, PrintStream dataGetter) throws SQLException {
+		flushChangeLogTable();
+		System.out.println(Utility.now()+" GETTING UPDATES FOR: " + vv);
+		System.out.println("WITH FILTOR:"+filter);
+		List<String> updates = new LinkedList<String>();
+		
+		StringBuilder withMetadata = new StringBuilder();//TODO:FOR TESTING
+		StringBuilder withoutMetadata = new StringBuilder();//TODO:FOR TESTING
+		
+		ResultSet cuentityidRS = dbConn.executeQuery("SELECT DISTINCT cuname, cuentityid FROM "+zwDataVersionsTable+" INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter");
+//		String query = "SELECT DISTINCT cuname, cuentityid FROM "+zwDataVersionsTable+" INNER JOIN changeunitentities USING (cuentityid) WHERE "+vv.toWhereClause()+" ORDER BY peername, counter";
+//		debugPrint(">>> GETTING UPDATES: "+query);
+			
+		//for each cuentityid with version newer than the one in vv
+		while(cuentityidRS.next()){
+			String cuentityid = cuentityidRS.getString("cuentityid");
+			String cuname = cuentityidRS.getString("cuname");
+			
+			//for each table in cuentityid's change unit
+			String prevtablename = "";
+			StringBuilder tabledata = new StringBuilder();
+			ResultSet valueRS = null;
+			
+			PreparedStatement dataPS = dbConn.getConnection().prepareStatement("SELECT entityid, tablename, attribute FROM changeunitentities cue WHERE cuentityid = ? AND EXISTS(SELECT cuentityid FROM "+cuname+" WHERE cuentityid = cue.cuentityid AND "+filter.getForCU(cuname)+") ORDER BY tablename");
+			dataPS.setString(1, cuentityid);
+//			System.out.println("STATEMENT:"+dataPS);
+			ResultSet dataRS = dataPS.executeQuery();
+			while(dataRS.next()){
+				String entityid = dataRS.getString("entityid");
+				String tablename = dataRS.getString("tablename");
+				String attribute = dataRS.getString("attribute");
+				
+				if(!tablename.equals(prevtablename)){
+					if(!prevtablename.equals(""))
+						tabledata.append(")");
+					
+					valueRS = dbConn.executeQuery("SELECT * FROM "+tablename+" WHERE entityid = '"+entityid+"'");
+					
+					if(!valueRS.next())
+						continue;
+			
+					tabledata.append("("+Utility.encode(tablename)+" "+entityid);
+				}
+				
+				//get data per attribute
+				String value = valueRS.getString(attribute);
+				
+				ResultSet foreignKeyRS = getForeignKey(tablename, attribute);
+				
+				if(foreignKeyRS != null){ //attribute is a foreign key
+					String foreigntable = foreignKeyRS.getString("foreigntable");
+					String foreignkey = foreignKeyRS.getString("foreignkey");
+					
+					value = getForeignEntity(foreigntable, foreignkey, value);
+				}
+				
+				tabledata.append(" "+Utility.encode(attribute)+":"+Utility.encode(value)+":"+dbUtil.getColumnType(tablename, attribute));
+				
+				withoutMetadata.append(valueRS.getString(attribute));
+				
+				prevtablename = tablename;
+			}
+			
+			if(tabledata.length() == 0)
+				continue;
+			
+			tabledata.append(")");
+			
+			VersionVector cuVV = new VersionVector(dbConn);
+			cuVV.loadByCUEntityID(cuentityid);
+
+			String cudata = "("+Utility.encode(cuname)+" "+cuentityid+" "+Utility.encode(cuVV.toString())+" "+tabledata.toString()+")";
+			updates.add(cudata);
+			
+			withMetadata.append(cudata);
+		}
+		for(int i=0;i<updates.size();i++)
+			debugPrint("updateSource: "+updates.get(i));
+		System.out.println(Utility.now()+" Done getting updates");
+		System.out.println("WITH METADATA:"+withMetadata.length());
+		System.out.println("WITHOUT METADATA:"+withoutMetadata.length());
+		dataGetter.println(withMetadata.length()+"\t"+withoutMetadata.length());
+		
+		return(updates);
+	}
+	
+	
+	
+	
+	//////////////////////////////////////////////////////////////////////////////////////////////
 
 	private String getZWTriggerName(TriggerOperation op, String tablename){
 		String opName = null;

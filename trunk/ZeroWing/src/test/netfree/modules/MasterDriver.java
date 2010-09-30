@@ -16,7 +16,7 @@ public class MasterDriver {
 //		
 //		md.runAllTests();
 		
-		MasterDriver md10 = new MasterDriver("syncs-10nodes/", 34, 10, 100, 206, baseTest);
+		MasterDriver md10 = new MasterDriver("syncs-10nodes/", 199, 10, 100, 42, baseTest);
 		
 		md10.runAllTests();
 		

@@ -16,22 +16,22 @@ public class MasterDriver {
 //		
 //		md.runAllTests();
 		
-		MasterDriver md10 = new MasterDriver("syncs-10nodes/", 199, 10, 100, 42, baseTest);
-		
-		md10.runAllTests();
+//		MasterDriver md10 = new MasterDriver("syncs-10nodes/", 199, 10, 100, 42, baseTest);
+//		
+//		md10.runAllTests();
 		
 		String longString = "randomStringrandomStringrandomStringrandomString";
-		MasterDriver md4long = new MasterDriver("syncs-long1-4nodes/", 0, 4, 100, 240, longString);
-		md4long.runAllTests();
+//		MasterDriver md4long = new MasterDriver("syncs-long1-4nodes/", 0, 4, 100, 240, longString);
+//		md4long.runAllTests();
+//		
+//		MasterDriver md6long = new MasterDriver("syncs-long1-6nodes/", 0, 6, 100, 240, longString);
+//		md6long.runAllTests();
 		
-		MasterDriver md6long = new MasterDriver("syncs-long1-6nodes/", 0, 6, 100, 240, longString);
-		md6long.runAllTests();
-		
-		MasterDriver md8long = new MasterDriver("syncs-long1-8nodes/", 0, 8, 100, 240, longString);
-		md8long.runAllTests();
-		
-		MasterDriver md10long = new MasterDriver("syncs-long1-10nodes/", 0, 10, 100, 240, longString);
-		md10long.runAllTests();
+//		MasterDriver md8long = new MasterDriver("syncs-long1-8nodes/", 120, 8, 100, 119, longString);
+//		md8long.runAllTests();
+//		
+//		MasterDriver md10long = new MasterDriver("syncs-long1-10nodes/", 0, 10, 100, 240, longString);
+//		md10long.runAllTests();
 		
 		// ============================ 
 		

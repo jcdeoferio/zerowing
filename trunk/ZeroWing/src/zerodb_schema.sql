@@ -20,7 +20,7 @@ SET default_with_oids = false;
 
 CREATE TABLE students (
     entity integer,
-    attribute character varying(20),
+    attribute character varying(55),
     value text
 );
 

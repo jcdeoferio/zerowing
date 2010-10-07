@@ -1,6 +1,6 @@
 CREATE TABLE students (
     pk serial primary key,
-    studentname character varying(20),
+    studentname character varying(200),
     studentnumber integer
 );
 

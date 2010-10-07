@@ -79,7 +79,7 @@ public class DataAnalyzer {
 //		DataAnalyzer da = new DataAnalyzer("syncs-8nodes/offlinesynctest-",".txt", 240, 600);		
 
 		// 10 nodes
-		DataAnalyzer da = new DataAnalyzer("syncs-10nodes/offlinesynctest-",".txt", 26, 600);
+		DataAnalyzer da = new DataAnalyzer("syncs-long2-6nodes/offlinesynctest-",".txt", 26, 600);
 		
 		da.readData();
 	}
